@@ -99,6 +99,8 @@ def plot(lat: list, spath: str) -> None:
     title = ' '.join(lat[0].split('_')[1:])
     plt.title(title)
     plt.ylabel('Precision')
+    #plt.xticks([])
+    #plt.yticks([])
     plt.xlabel('Recall')
     plt.grid(linestyle='--')
     #save the plot
