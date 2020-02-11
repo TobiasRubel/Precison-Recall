@@ -33,7 +33,10 @@ def get_k(k: int,df: pd.DataFrame) -> pd.DataFrame:
     :df      dataframe of edges
     :returns sub-dataframe of k-ranked (or less) edges
     """
-    return df[df['k'] <= k].take([0,1],axis=1)
+    try:
+        return df[df['k'] <= k].take([0,1],axis=1)
+    except:
+        return df[df['KSP index'] <= k].take([0,1],axis=1)
 
 def make_edges(df: pd.DataFrame) -> set:
     """
@@ -43,9 +46,11 @@ def make_edges(df: pd.DataFrame) -> set:
     return {tuple(x) for x in df.values}
 
 def precision(prediction: set,truth:set,negs: set) -> float:
-    return len(prediction-prediction.intersection(negs))/(len(prediction))
+    prediction = {x for x in prediction if x in truth or x in negs}
+    return len(prediction.intersection(truth))/(len(prediction)+1)
 
 def recall(prediction: set,truth: set,negs: set) -> float:
+    prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
 def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set) -> dict:
@@ -57,14 +62,23 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set) -> d
     p = {}
     #turn ground truth into set of edges
     truth = make_edges(ground.take([0,1],axis=1))
-    for k in set(predictions['k']):
-        prediction = make_edges(get_k(k,predictions))
-        p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
+    try:
+        for k in set(predictions['k']):
+            prediction = make_edges(get_k(k,predictions))
+            p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
+    except:
+        for k in set(predictions['KSP index']):
+            prediction = make_edges(get_k(k,predictions))
+            p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
+    #default recall = 0 to precision = 1
+    p = {k:v for k,v in p.items() if (v != 0 and k != 0)}
+    p[1] = 0
     return p
 
-def pr(dname: str,edges=True) -> None:
+def pr(dname: str,negative:set,edges=True) -> None:
     """
     :dname       algorithm_interactome_pathway
+    :negatives   a set of negatives to use
     :returns     nothing
     :side-effect makes and saves precision-recall data for dname
     """
@@ -89,7 +103,7 @@ def pr(dname: str,edges=True) -> None:
     except:
         print('could not find interactome for {}'.format(dname))
         return
-    negative = negatives(interactome,make_edges(ground))
+    #negative = negatives(interactome,make_edges(ground))
     if edges:
         p = pr_edges(predictions,ground,negative)
     else:
@@ -126,7 +140,7 @@ def main(argv: str) -> None:
     """
     try:
         path,directories = argv[1],argv[2:]
-        print('making precision recall plots for the following: {}'.format(directories))
+        print('generating precision recall data for the following: {}'.format(directories))
     except:
         print('arguments are required...')
         return
@@ -134,8 +148,13 @@ def main(argv: str) -> None:
         os.chdir(path)
     except:
         print("path either doesn't exist or could not be accessed.")
+    #this is a hack to get the negatives. It should probably be revised.
+    #ultimately it would be best if there was one place where interactomes,grounds were stored
+    interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
+    ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
+    negative = negatives(interactome,make_edges(ground))
     for d in directories:
-        pr(d)
+        pr(d,negative)
 
 
 
