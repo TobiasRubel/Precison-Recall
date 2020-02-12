@@ -21,6 +21,7 @@ import os
 import sys
 import random
 
+import numpy as np
 import pandas as pd
 
 def load_df_tab(name:str):
@@ -47,13 +48,18 @@ def make_edges(df: pd.DataFrame) -> set:
 
 def precision(prediction: set,truth:set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
-    return len(prediction.intersection(truth))/(len(prediction)+1)
+    try:
+        return len(prediction.intersection(truth))/(len(prediction))
+    except:
+        #an exception occurs just in case the prediction is neither in 
+        #the positive nor negative set. Thus we filter it out.
+        return np.NaN
 
 def recall(prediction: set,truth: set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
-def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set) -> dict:
+def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbose=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -68,8 +74,14 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set) -> d
             p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
     except:
         for k in set(predictions['KSP index']):
+            if verbose:
+                print('processing k value = {}'.format(k))
             prediction = make_edges(get_k(k,predictions))
-            p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
+            a = precision(prediction,truth,negatives)
+            b = recall(prediction,truth,negatives)
+            if verbose:
+                print('precision: {}\trecall: {}'.format(a,b))
+            p[a] =  b
     #default recall = 0 to precision = 1
     p = {k:v for k,v in p.items() if (v != 0 and k != 0)}
     p[1] = 0
