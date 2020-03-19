@@ -20,6 +20,7 @@ import utils
 import os
 import sys
 import random
+import getopt
 
 import numpy as np
 import pandas as pd
@@ -59,7 +60,7 @@ def recall(prediction: set,truth: set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
-def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbose=False,debug=False) -> dict:
+def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,point=False,verbose=False,debug=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -69,29 +70,44 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbo
     #turn ground truth into set of edges
     truth = make_edges(ground.take([0,1],axis=1))
     try:
-        for k in set(predictions['k']):
-            prediction = make_edges(get_k(k,predictions))
-            p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
-    except:
-        for k in set(predictions['KSP index']):
-            if verbose:
-                print('processing k value = {}'.format(k))
+        if point:
+            k = max(set(predictions['k']))
+            #k = max(set(predictions['KSP index']))
             prediction = make_edges(get_k(k,predictions))
             a = precision(prediction,truth,negatives)
-            if debug:
-                print('precision: {}'.format(a))
+            print(a)
+        else:
+            for k in set(predictions['k']):
+                prediction = make_edges(get_k(k,predictions))
+                p[precision(prediction,truth,negatives)] = recall(prediction,truth,negatives)
+                b = recall(prediction,truth,negatives)
+                p[b] =  a
+    except:
+        if point:
+            k = max(set(predictions['KSP index']))
+            prediction = make_edges(get_k(k,predictions))
+            a = precision(prediction,truth,negatives)
             b = recall(prediction,truth,negatives)
-            if debug:
-                print('recall: {}'.format(b))
-            if verbose:
-                print('precision: {}\trecall: {}'.format(a,b))
             p[b] =  a
+        else:
+            for k in set(predictions['KSP index']):
+                if verbose:
+                    print('processing k value = {}'.format(k))
+                prediction = make_edges(get_k(k,predictions))
+                a = precision(prediction,truth,negatives)
+                if debug:
+                    print('precision: {}'.format(a))
+                b = recall(prediction,truth,negatives)
+                if debug:
+                    print('recall: {}'.format(b))
+                if verbose:
+                    print('precision: {}\trecall: {}'.format(a,b))
+                p[b] =  a
     #default recall = 0 to precision = 1
     p = {k:v for k,v in p.items() if (v != 0 and k != 0)}
-    p[0] = 1
     return p
 
-def pr(dname: str,negative:set,edges=True) -> None:
+def pr(dname: str,negative:set,edges=True,point=False) -> None:
     """
     :dname       algorithm_interactome_pathway
     :negatives   a set of negatives to use
@@ -121,7 +137,7 @@ def pr(dname: str,negative:set,edges=True) -> None:
         return
     #negative = negatives(interactome,make_edges(ground))
     if edges:
-        p = pr_edges(predictions,ground,negative)
+        p = pr_edges(predictions,ground,negative,point)
     else:
         print('node precision recall not yet implemented. come back soon!')
     #sort dictionary
@@ -172,7 +188,16 @@ def main(argv: str) -> None:
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
     negative = negatives(interactome,make_edges(ground))
     for d in directories:
-        pr(d,negative)
+        try:
+            p = os.path.join(d,'config.conf')
+            print(p)
+            conf = pd.read_csv(os.path.join(d,'config.conf'),sep=' = ')
+        except Exception as e:
+            print('no conf file for {}'.format(d))
+            print(e)
+            return e
+        POINT = conf[conf['value'] == 'POINT']['bool'].bool()
+        pr(d,negative,True,POINT)
 
 
 
