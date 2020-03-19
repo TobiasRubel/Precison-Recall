@@ -59,7 +59,7 @@ def recall(prediction: set,truth: set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
-def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbose=False) -> dict:
+def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbose=False,debug=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -78,13 +78,17 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,verbo
                 print('processing k value = {}'.format(k))
             prediction = make_edges(get_k(k,predictions))
             a = precision(prediction,truth,negatives)
+            if debug:
+                print('precision: {}'.format(a))
             b = recall(prediction,truth,negatives)
+            if debug:
+                print('recall: {}'.format(b))
             if verbose:
                 print('precision: {}\trecall: {}'.format(a,b))
-            p[a] =  b
+            p[b] =  a
     #default recall = 0 to precision = 1
     p = {k:v for k,v in p.items() if (v != 0 and k != 0)}
-    p[1] = 0
+    p[0] = 1
     return p
 
 def pr(dname: str,negative:set,edges=True) -> None:
@@ -122,12 +126,12 @@ def pr(dname: str,negative:set,edges=True) -> None:
         print('node precision recall not yet implemented. come back soon!')
     #sort dictionary
     p = {k: v for k, v in sorted(p.items(), key=lambda item: item[1])}
-    df = pd.DataFrame({'precision':list(p.keys()),'recall':list(p.values())})
+    df = pd.DataFrame({'recall':list(p.keys()),'precision':list(p.values())})
     df.to_csv(os.path.join(dname,'pr.csv'),index=False)
     nf = pd.DataFrame({'negatives':list(negative)})
     nf.to_csv(os.path.join(dname,'negatives.csv'),index=False)
 
-def negatives(interactome: pd.DataFrame,positives: set,num:int=0) -> set:
+def negatives(interactome: pd.DataFrame,positives: set,num:int=0,bivalent=False) -> set:
     """
     :interactome dataframe of interaction data
     :num         number of negatives to randomly generate
@@ -138,6 +142,8 @@ def negatives(interactome: pd.DataFrame,positives: set,num:int=0) -> set:
         num = len(positives)*50
     edges = make_edges(interactome.take([0,1],axis=1))
     edges = edges - positives
+    if bivalent:
+        return edges
     return set(random.sample(list(edges),k=num))
 
 

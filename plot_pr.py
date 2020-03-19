@@ -73,6 +73,10 @@ def pr(name: str) -> (list,list):
     """
     #fetch precision and recall
     df = utils.read_df(name,'pr.csv')
+    df = df.sort_values(by=['recall','precision'],ascending=[True,False])
+    print(df)
+    #df = df.sort_values('precision',ascending=False)
+
     recall = list(df['recall'])
     precision = list(df['precision'])
     return recall,precision
@@ -88,12 +92,13 @@ def plot(lat: list, spath: str) -> None:
     #initialize pyplot figure
     fig = plt.figure()
     ax = fig.add_subplot(111)
+    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_']*50)
     #plot each precision recall plot
     for l in lat:
         #get algorithm name for legend
         lname = l.split('_')[0]
         #plot
-        ax.plot(*pr(l),label=lname)
+        ax.plot(*pr(l),label=lname,marker=next(markers),alpha=0.7)
     #format figure globally
     ax.legend()
     title = ' '.join(lat[0].split('_')[1:])
@@ -104,7 +109,8 @@ def plot(lat: list, spath: str) -> None:
     plt.xlabel('Recall')
     plt.grid(linestyle='--')
     #save the plot
-    sname = '-'.join(lat)+'.png'
+    lat = [x.replace('HybridLinker','HL') for x in lat]
+    sname = '-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
     #in order to incorporate the save path 
     #some more work needs to be done.
     plt.savefig(os.path.join('../',spath,sname))
