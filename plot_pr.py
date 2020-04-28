@@ -66,41 +66,62 @@ def verify_coherence(lat: list) -> bool:
 
 # routines that handle the plotting of the precision recall plots
 
-def pr(name: str) -> (list,list):
+def pr(name: str,edges=True) -> (list,list):
     """
     :name    name of directory
+    :edges   (trivalent) boolean as to whether we are plotting edges,nodes or both
     :returns recall, precision
     """
     #fetch precision and recall
-    df = utils.read_df(name,'pr.csv')
+    if edges == True:
+        df = utils.read_df(name,'pr-edges.csv')
+    elif edges == False:
+        df = utils.read_df(name,'pr-nodes.csv')
     df = df.sort_values(by=['recall','precision'],ascending=[True,False])
-    print(df)
     #df = df.sort_values('precision',ascending=False)
-
     recall = list(df['recall'])
     precision = list(df['precision'])
     return recall,precision
 
 
-def plot(lat: list, spath: str) -> None:
+def plot(lat: list, spath: str,edges=True) -> None:
     """
     :lat         list of directory names
     :spath       name of save path
+    :edges       (trivalent) boolean as to whether we are plotting edges,nodes or both
     :returns     nothing
     :side-effect saves a plot to spath
     """
     #initialize pyplot figure
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
     markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_']*50)
-    #plot each precision recall plot
-    for l in lat:
-        #get algorithm name for legend
-        lname = l.split('_')[0]
-        #plot
-        ax.plot(*pr(l),label=lname,marker=next(markers),alpha=0.7)
+    if (edges == True or edges == False):
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        #plot each precision recall plot
+        for l in lat:
+            #get algorithm name for legend
+            lname = l.split('_')[0]
+            #plot
+            ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
+    elif edges == '#':
+        fig = plt.figure(figsize=(10,5))
+        ax = fig.add_subplot(121)
+        #plot each precision recall plot
+        for l in lat:
+            #get algorithm name for legend
+            lname = l.split('_')[0]
+            #plot
+            ax.plot(*pr(l,True),label=lname,marker=next(markers),alpha=0.7)
+        cax = fig.add_subplot(122)
+        #plot each precision recall plot
+        for l in lat:
+            #get algorithm name for legend
+            lname = l.split('_')[0]
+            #plot
+            cax.plot(*pr(l,False),label=lname,marker=next(markers),alpha=0.7)
     #format figure globally
-    ax.legend()
+    #ax.legend()
+    plt.legend()
     title = ' '.join(lat[0].split('_')[1:])
     plt.title(title)
     plt.ylabel('Precision')
@@ -110,7 +131,8 @@ def plot(lat: list, spath: str) -> None:
     plt.grid(linestyle='--')
     #save the plot
     lat = [x.replace('HybridLinker','HL') for x in lat]
-    sname = '-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
+    lat = [x.replace('PerfectLinker','PeL') for x in lat]
+    sname = str(edges)+'-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
     #in order to incorporate the save path 
     #some more work needs to be done.
     plt.savefig(os.path.join('../',spath,sname))
@@ -138,7 +160,7 @@ def main(args: list) -> None:
     except:
         print("path {} either doesn't exist or could not be accessed.".format(path))
     if verify_coherence(directories):
-        plot(directories,spath)
+        plot(directories,spath,'#')
     else:
         print('coherence could not be established. Terminating...')
         
