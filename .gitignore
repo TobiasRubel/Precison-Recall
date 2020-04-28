@@ -1,2 +1,4 @@
-plots/*
-data/*
+data/
+plots/
+bivalent-data/
+bivalent-plots/
