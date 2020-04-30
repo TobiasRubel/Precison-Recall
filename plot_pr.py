@@ -123,13 +123,18 @@ def plot(lat: list, spath: str,edges=True) -> None:
     #ax.legend()
     plt.legend()
     title = ' '.join(lat[0].split('_')[1:])
-    plt.title(title)
-    plt.ylabel('Precision')
-    #plt.xticks([])
-    #plt.yticks([])
-    plt.xlabel('Recall')
-    plt.grid(linestyle='--')
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_title('Interactions')
+    cax.set_xlabel('Recall')
+    cax.set_ylabel('Precision')
+    cax.set_title('Proteins')
+    #plt.ylabel('Precision')
+    #plt.xlabel('Recall')
+    ax.grid(linestyle='--')
+    cax.grid(linestyle='--')
     #save the plot
+    plt.title(title)
     lat = [x.replace('HybridLinker','HL') for x in lat]
     lat = [x.replace('PerfectLinker','PeL') for x in lat]
     sname = str(edges)+'-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
