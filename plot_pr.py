@@ -93,7 +93,7 @@ def plot(lat: list, spath: str,edges=True) -> None:
     :side-effect saves a plot to spath
     """
     #initialize pyplot figure
-    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_']*50)
+    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
     if (edges == True or edges == False):
         fig = plt.figure()
         ax = fig.add_subplot(111)
@@ -104,7 +104,7 @@ def plot(lat: list, spath: str,edges=True) -> None:
             #plot
             ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
     elif edges == '#':
-        fig = plt.figure(figsize=(10,5))
+        fig = plt.figure(figsize=(12,5))
         ax = fig.add_subplot(121)
         #plot each precision recall plot
         for l in lat:
@@ -118,28 +118,29 @@ def plot(lat: list, spath: str,edges=True) -> None:
             #get algorithm name for legend
             lname = l.split('_')[0]
             #plot
-            cax.plot(*pr(l,False),label=lname,marker=next(markers),alpha=0.7)
+            cax.plot(*pr(l,False),label="_nolegend_",marker=next(markers),alpha=0.7)
     #format figure globally
     #ax.legend()
-    plt.legend()
+    fig.legend(loc='center left')
     title = ' '.join(lat[0].split('_')[1:])
+    fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
     ax.set_title('Interactions')
     cax.set_xlabel('Recall')
     cax.set_ylabel('Precision')
     cax.set_title('Proteins')
-    #plt.ylabel('Precision')
-    #plt.xlabel('Recall')
     ax.grid(linestyle='--')
     cax.grid(linestyle='--')
     #save the plot
-    plt.title(title)
     lat = [x.replace('HybridLinker','HL') for x in lat]
     lat = [x.replace('PerfectLinker','PeL') for x in lat]
     sname = str(edges)+'-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
     #in order to incorporate the save path 
     #some more work needs to be done.
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.21)
+    plt.subplots_adjust(top=0.90)
     plt.savefig(os.path.join('../',spath,sname))
 
 #handle input
