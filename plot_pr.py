@@ -11,7 +11,7 @@
 #   algorithm_interactome_pathway/
 #   ├── negatives.csv
 #   └── pr.csv
-
+import re
 import sys
 import os
 import utils
@@ -143,8 +143,63 @@ def plot(lat: list, spath: str,edges=True) -> None:
     plt.subplots_adjust(top=0.90)
     plt.savefig(os.path.join('../',spath,sname))
 
-#handle input
+def plot_composite(lat: list, spath: str,) -> None:
+    """
+    :lat         list of directory names
+    :spath       name of save path
+    :edges       (trivalent) boolean as to whether we are plotting edges,nodes or both
+    :returns     nothing
+    :side-effect saves a plot to spath
+    """
+    #initialize pyplot figure
+    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
+    fig, axs = plt.subplots(2, 2,figsize=(25,15))
+    plotloc = axs.flat
+    print(axs)
+    #turn list of methods into list of tuples of things to plot together:
+    combine_key = {'HybridLinker-BTB':'BowtieBuilder','HybridLinker-SP':'ShortestPaths','HybridLinker-PL':'PathLinker','HybridLinker-RN':'ResponseNet','HybridLinker':'PathLinker'}
+    partner = lambda x: next(y for y in lat if re.match('^{}_'.format(combine_key[x]),y))
+    old_lat = lat
+    lat = [(x,partner(x.split('_')[0])) for x in lat if x.split('_')[0] in combine_key]
+    print(lat)
+    #plot each precision recall plot
+    for l in lat:
+        loc = next(plotloc)
+        print(loc)
+        #get algorithm name for legend
+        l1name = l[0].split('_')[0]
+        #plot
+        loc.plot(*pr(l[0],True),label=l1name,marker=next(markers),alpha=0.7)
+        #get algorithm name for legend (once more with feeling!)
+        l2name = l[1].split('_')[0]
+        #plot
+        loc.plot(*pr(l[1],True),label=l2name,marker=next(markers),alpha=0.7)
+    #cax = fig.add_subplot(122)
+    #format figure globally
+    #ax.legend()
+    fig.legend(loc='center left')
+    title = 'Composite Interaction Performance across 29 Pathways'
+    fig.suptitle(title,fontsize=16)
+    for ax in axs.flat:
+        ax.set_xlabel('Recall')
+        ax.set_ylabel('Precision')
+        ax.grid(linestyle='--')
+    #toggle axes
+    #plt.setp(axs, xlim=(0,1), ylim=(0,1)) 
+    #save the plot
+    old_lat = [x.replace('HybridLinker','HL') for x in old_lat]
+    old_lat = [x.replace('PerfectLinker','PeL') for x in old_lat]
+    sname = 'composite-blowup.pdf'
+    #in order to incorporate the save path 
+    #some more work needs to be done.
+    plt.tight_layout()
+    plt.subplots_adjust(left=0.21)
+    plt.subplots_adjust(top=0.90)
+    plt.savefig(os.path.join('../',spath,sname))
 
+
+
+#handle input
 def main(args: list) -> None:
     """
     :args        first argument should be path where the directories reside
@@ -166,7 +221,8 @@ def main(args: list) -> None:
     except:
         print("path {} either doesn't exist or could not be accessed.".format(path))
     if verify_coherence(directories):
-        plot(directories,spath,'#')
+        #plot(directories,spath,'#')
+        plot_composite(directories,spath)
     else:
         print('coherence could not be established. Terminating...')
         
