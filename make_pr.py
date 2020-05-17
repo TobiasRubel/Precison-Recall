@@ -41,15 +41,15 @@ def make_edges(df: pd.DataFrame) -> set:
     :df      pandas dataframe
     :returns set of edge tuples 
     """
-    return {tuple(x) for x in df.values}
+    return {frozenset(x) for x in df.values}
 
 def make_nodes(df: pd.DataFrame) -> set:
     """
     :df      pandas dataframe
     :returns set of nodes 
     """
-    n1 = {tuple(x[0],x[2]) for x in df.values}
-    n2 = {tuple([x[1],x[2]) for x in df.values}
+    n1 = {(x[0],x[2]) for x in df.values}
+    n2 = {(x[1],x[2]) for x in df.values}
     return n1.union(n2)
 
 
@@ -95,7 +95,7 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname
             b = recall(prediction,truth,negatives)
             p[b] =  a
         else:
-            for k in set(predictions['rank']):
+            for k in sorted(list(set(predictions['rank']))):
                 if verbose:
                     print('processing k value = {}'.format(k))
                 prediction = make_edges(get_k(k,predictions))
@@ -240,7 +240,7 @@ def negatives(interactome: pd.DataFrame,positives: set,pname,num:int=0,bivalent=
     if bivalent:
         return edges
     samp = set(random.sample(list(edges),k=num))
-    psamp = {(a,b,pname) for (a,b) in samp}
+    psamp = {frozenset((a,b,pname)) for (a,b) in samp}
     return psamp
 
 
@@ -267,7 +267,7 @@ def main(argv: str) -> None:
     pname = directories[0].split('_')[-2]
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
-    COMPOSITE = True
+    COMPOSITE = False
     if COMPOSITE == False:
         negative = negatives(interactome,make_edges(ground.take([0,1],axis=1)),pname)
     else:
@@ -284,7 +284,7 @@ def main(argv: str) -> None:
             print(e)
             return e
         POINT = conf[conf['value'] == 'POINT']['bool'].bool()
-        pr(d,negative,pname,'#',POINT)
+        pr(d,negative,pname,True,POINT)
 
 
 

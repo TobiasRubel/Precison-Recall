@@ -127,11 +127,12 @@ def plot(lat: list, spath: str,edges=True) -> None:
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
     ax.set_title('Interactions')
-    cax.set_xlabel('Recall')
-    cax.set_ylabel('Precision')
-    cax.set_title('Proteins')
+    if edges == '#':
+        cax.set_xlabel('Recall')
+        cax.set_ylabel('Precision')
+        cax.set_title('Proteins')
+        cax.grid(linestyle='--')
     ax.grid(linestyle='--')
-    cax.grid(linestyle='--')
     #save the plot
     lat = [x.replace('HybridLinker','HL') for x in lat]
     lat = [x.replace('PerfectLinker','PeL') for x in lat]
@@ -221,8 +222,8 @@ def main(args: list) -> None:
     except:
         print("path {} either doesn't exist or could not be accessed.".format(path))
     if verify_coherence(directories):
-        #plot(directories,spath,'#')
-        plot_composite(directories,spath)
+        plot(directories,spath,True)
+        #plot_composite(directories,spath)
     else:
         print('coherence could not be established. Terminating...')
         
