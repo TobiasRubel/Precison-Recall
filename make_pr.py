@@ -95,8 +95,9 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname
 
         # make pred_list as (pred,rank) tuples
         # sort in place by increasing rank.
-        pred_list = [(frozenset((x[0],x[1],x[3])),x[2]) for x in predictions.values if x[0] != 'SRC']
+        pred_list = [(frozenset((x[0],x[1],x[3])),x[2]) for x in predictions[['#tail','head','rank','pathway_name']].values if x[0] != 'SRC' and x[1] != 'SNK']
         pred_list.sort(key = lambda x: x[1])
+        print('first 10 elements of pred_list are',pred_list[:10])
         p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
 
     else:
@@ -146,7 +147,7 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
         ## make pred_dictionary of (node,best_rank) key/value pairs.
         ## here, keep the lowest rank of the nodes.
         pred_dict = {}
-        for x in predictions.values:
+        for x in predictions[['#tail','head','rank','pathway_name']].values:
             dict_key = (x[0],x[3])
             if x[0] != 'SRC' and (x[0] not in pred_dict or x[2] < pred_dict[dict_key]):
                 pred_dict[dict_key] = x[2]
@@ -185,6 +186,7 @@ def pr_fast(predictions:list,truth:set, negs:set, verbose=False,debug=False) -> 
     prev_val,prev_rec,prev_prec = -1,-1,-1
     pred_set = set()
     for pred,val in predictions:
+
         if pred in pred_set:
             ## we've already evaluated this. Skip.
             ## for example it might be (u,v) when (v,u) has already been seen.
@@ -215,7 +217,7 @@ def pr_fast(predictions:list,truth:set, negs:set, verbose=False,debug=False) -> 
             p[prev_rec] = prev_prec
 
         if verbose:# and counter % 100 == 0:
-            print('processing prediction %d (%d of %d): %d pos and %d negs encountered. prec %.2f and rec %.2f' % (val,counter,len(predictions),num_TPs,num_preds-num_TPs,prec,rec))
+            print('processing prediction for value=%d (%d of %d): %d pos and %d negs encountered. prec %.2f and rec %.2f' % (val,counter,len(predictions),num_TPs,num_preds-num_TPs,prec,rec))
 
         if debug:
             old_prec = precision(pred_set,truth,negs)
@@ -335,13 +337,13 @@ def main(argv: str) -> None:
     pname = directories[0].split('_')[-2]
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
-    COMPOSITE = True
+    COMPOSITE = False
     if COMPOSITE == False:
         negative = get_negatives(interactome,make_edges(ground.take([0,1],axis=1)),pname)
     else:
         with open(os.path.join(directories[0],'negatives.csv'),'r') as f:
             negative = {eval(eval(x)) for x in f.read().splitlines()[1:]}
-
+    print('%d negatives' % (len(negative)))
     for d in directories:
         try:
             p = os.path.join(d,'config.conf')
