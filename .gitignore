@@ -1,4 +1,4 @@
 data/*
 plots/*
-variance_materials/*
+variance_materials/**
 !variance_matierals/variance_plot.py
