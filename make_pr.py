@@ -121,6 +121,7 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
 
     #turn ground truth into set of nodes
     truth = make_nodes(ground[['#tail','head','pathway_name']])
+    #print('first 10 nodes from truth:',list(truth)[:10])
 
     ## convert edge negatives to node negatives
     ## To handle frozensets, first get all negative nodes.
@@ -135,6 +136,7 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
     ## then stitch the negatives back together.
     negatives = {(x,pname) for x in negatives}
     print('{} NEGATIVE NODES ({}X of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
+    #print('first 10 nodes from negs:',list(negatives)[:10])
 
     ## if it's ranked and not a point, compute PR for ranking.
     if ranked and not point:
@@ -157,8 +159,9 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
 
         # make pred_list as (pred,rank) tuples
         # sort in place by increasing rank.
-        pred_list = [(k,v) for k,v in pred_dict]
+        pred_list = [(k,v) for k,v in pred_dict.items()]
         pred_list.sort(key = lambda x: x[1])
+        print('first 10 elements of pred_list are',pred_list[:10])
         p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
 
     else:
