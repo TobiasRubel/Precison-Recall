@@ -70,48 +70,7 @@ def recall(prediction: set,truth: set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
-def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname:str,ranked=False,point=False,verbose=True,debug=False) -> dict:
-    """
-    :prediction dataframe of ranked edges
-    :ground     dataframe of "ground truth" edges
-    :returns    dictionary of precision keys to recall values
-    :note: this whole routine needs to be rewritten
-    """
-    p = {} # dictionary of (recall, precision) pairs
-
-    #turn ground truth into set of edges
-    truth = make_edges(ground[['#tail','head','pathway_name']])
-    #check to see if this is a ranked method
-
-    #print('pr edges ranked = {}'.format(ranked))
-
-    ## if it's ranked and not a point, compute PR for ranking.
-    if ranked and not point:
-        try:
-            predictions = predictions.rename(columns={'KSP index':'rank'})
-        except Exception as e:
-            print('WARNING: predictions column is not "KSP index" or "rank"')
-            print(e)
-
-        # make pred_list as (pred,rank) tuples
-        # sort in place by increasing rank.
-        pred_list = [(frozenset((x[0],x[1],x[3])),x[2]) for x in predictions[['#tail','head','rank','pathway_name']].values if x[0] != 'SRC' and x[1] != 'SNK']
-        pred_list.sort(key = lambda x: x[1])
-        print('first 10 elements of pred_list are',pred_list[:10])
-        p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
-
-    else:
-        # Either the method is unranked OR we're computing a single point.
-        # In both of these cases, take the full set.
-        prediction = make_edges(predictions[['#tail','head','pathway_name']])
-        p[recall(prediction,truth,negatives)] = precision(prediction,truth,negatives)
-
-    # keep only nonzero (key,value) pairs
-    p = {k:v for k,v in p.items() if (v != 0 and k != 0)}
-
-    return p
-
-def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,pname:str,ranked=False,point=False,verbose=True,debug=False) -> dict:
+def pr_nodes(predictions: pd.DataFrame,truth: set,negatives: set,pname:str,ranked=False,point=False,verbose=False,debug=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -119,24 +78,10 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
     """
     p = {} # dictionary of (recall, precision) pairs
 
-    #turn ground truth into set of nodes
-    truth = make_nodes(ground[['#tail','head','pathway_name']])
-    #print('first 10 nodes from truth:',list(truth)[:10])
-
-    ## convert edge negatives to node negatives
-    ## To handle frozensets, first get all negative nodes.
-    #negatives = {(y,x[3]) for x in negatives for y in x[:2]}
-    negatives = set()
-    for n in edge_negatives:
-        negatives.update(set(n))
-    try:
-        negatives.remove(pname)
-    except:
-        pass
-    ## then stitch the negatives back together.
-    negatives = {(x,pname) for x in negatives}
-    print('{} NEGATIVE NODES ({}X of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
-    #print('first 10 nodes from negs:',list(negatives)[:10])
+    print('first 10 nodes from pos:',list(truth)[:10])
+    ## don't need to mess with negatives; they're alredady set.
+    print('{} NEGATIVE NODES ({} of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
+    print('first 10 nodes from negs:',list(negatives)[:10])
 
     ## if it's ranked and not a point, compute PR for ranking.
     if ranked and not point:
@@ -238,7 +183,7 @@ def pr_fast(predictions:list,truth:set, negs:set, verbose=False,debug=False) -> 
         p[rec] = prec
     return p
 
-def pr(dname: str,negative:set,pname: str, edges=True,point=False) -> None:
+def pr(dname: str,negative:set,truth:set,pname: str, point=False,ignore_adjacents=False) -> None:
     """
     :dname       algorithm_interactome_pathway
     :negatives   a set of negatives to use
@@ -255,50 +200,30 @@ def pr(dname: str,negative:set,pname: str, edges=True,point=False) -> None:
     except:
         print('could not find ranked edges file for {}'.format(dname))
         return
-    #fetch ground truth
-    try:
-        ground = load_df_tab(os.path.join(dname,'ground.csv'))
-    except:
-        print('could not find ground truth for {}'.format(dname))
-        return
-    #load interactome and generate negatives
-    try:
-        interactome = load_df_tab(os.path.join(dname,'interactome.csv'))
-    except:
-        print('could not find interactome for {}'.format(dname))
-        return
 
     ranked = 'KSP index' in predictions.columns or 'rank' in predictions.columns
 
-    if edges == True or edges == '#': ## RUN EDGES
-        start = time.time()
-        p1 = pr_edges(predictions,ground,negative,pname,ranked,point)
-        end = time.time()
-        print('LOG EDGES: %s\tpoint=%s\tranked=%s\ttime=%f' % (dname,point,ranked,end-start))
-        try:
-            p1 = [(k,v) for k, v in sorted(p1.items(), key=lambda item: item[0])]
-            df = pd.DataFrame({'recall':[k for k,v in p1],'precision':[v for k,v in p1]})
-            print(df)
-            df.to_csv(os.path.join(dname,'pr-edges.csv'),index=False)
-            print('wrote to %s' % (os.path.join(dname,'pr-edges.csv')))
-        except Exception as e:
-            print(e)
-
-    if edges == False or edges == '#': ## RUN NODES
-        start = time.time()
-        p2 = pr_nodes(predictions,ground,negative,pname,ranked,point)
-        end = time.time()
-        print('LOG NODES: %s\tpoint=%s\tranked=%s\ttime=%f' % (dname,point,ranked,end-start))
-        try:
-            p2 = [(k,v) for k, v in sorted(p2.items(), key=lambda item: item[0])]
-            df = pd.DataFrame({'recall':[k for k,v in p2],'precision':[v for k,v in p2]})
-            df.to_csv(os.path.join(dname,'pr-nodes.csv'),index=False)
+    start = time.time()
+    p2 = pr_nodes(predictions,truth,negative,pname,ranked,point)
+    end = time.time()
+    print('LOG NODES: %s\tpoint=%s\tranked=%s\ttime=%f' % (dname,point,ranked,end-start))
+    try:
+        p2 = [(k,v) for k, v in sorted(p2.items(), key=lambda item: item[0])]
+        df = pd.DataFrame({'recall':[k for k,v in p2],'precision':[v for k,v in p2]})
+        if ignore_adjacents:
+            print('wrote to %s' % (os.path.join(dname,'pr-nodes-ignoreadj.csv')))
+            df.to_csv(os.path.join(dname,'pr-nodes-ignoreadj.csv'),index=False)
+        else:
             print('wrote to %s' % (os.path.join(dname,'pr-nodes.csv')))
-        except Exception as e:
-            print(e)
+            df.to_csv(os.path.join(dname,'pr-nodes.csv'),index=False)
+    except Exception as e:
+        print(e)
 
-    nf = pd.DataFrame({'negatives':list(negative)})
-    nf.to_csv(os.path.join(dname,'negatives.csv'),index=False)
+    nf = pd.DataFrame({'negatives':sorted(list(negative))})
+    if ignore_adjacents:
+        nf.to_csv(os.path.join(dname,'negatives-nodes-ignoreadj.csv'),index=False)
+    else:
+        nf.to_csv(os.path.join(dname,'negatives-nodes.csv'),index=False)
 
 def get_negatives(interactome: pd.DataFrame,positives: set,pname,num:int=0,bivalent=False) -> set:
     """
@@ -310,12 +235,19 @@ def get_negatives(interactome: pd.DataFrame,positives: set,pname,num:int=0,bival
     if num == 0:
         num = len(positives)*50
     edges = make_edges(interactome.take([0,1],axis=1))
-    edges = edges - positives
+    edges = {tuple(e) for e in edges}
+    #nodes = set()
+    #for e in edges:
+#        nodes.update(set(e))
+    nodes = set([e[0] for e in edges]).union(set([e[1] for e in edges]))
+    print('%d total nodes (%.3f are positives)' % (len(nodes),len(positives)/len(nodes)))
+    nodes = nodes - positives
+    print('%d total'% (len(nodes)))
     if bivalent:
-        return edges
-    samp = set(random.sample(list(edges),k=num))
-    psamp = {frozenset((a,b,pname)) for (a,b) in samp}
-    ## Nnode negs should be determined here too. - AR
+        return nodes
+
+    samp = set(random.sample(list(nodes),k=num))
+    psamp = {(a,pname) for a in samp}
     return psamp
 
 def main(argv: str) -> None:
@@ -327,7 +259,9 @@ def main(argv: str) -> None:
     :side-effect makes precision recall if possible
     """
     try:
-        path,directories = argv[1],argv[2:]
+        path,IGNORE_ADJ,directories = argv[1],eval(argv[2]),argv[3:]
+        print(path)
+        print(IGNORE_ADJ)
         print('generating precision recall data for the following: {}'.format(directories))
     except:
         print('arguments are required...')
@@ -340,13 +274,17 @@ def main(argv: str) -> None:
     pname = directories[0].split('_')[-2]
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
-    COMPOSITE = False
-    if COMPOSITE == False:
-        negative = get_negatives(interactome,make_edges(ground.take([0,1],axis=1)),pname)
-    else:
-        with open(os.path.join(directories[0],'negatives.csv'),'r') as f:
-            negative = {eval(eval(x)) for x in f.read().splitlines()[1:]}
-    print('%d negatives' % (len(negative)))
+    truth = make_nodes(ground[['#tail','head','pathway_name']])
+
+    ## get negatives.
+    #fname = os.path.join(directories[0],'negatives-nodes.csv')
+    #if os.path.isfile(fname):
+    #    with open(os.path.join(directories[0],'negatives-nodes.csv'),'r') as f:
+    #        negative = {eval(eval(x)) for x in f.read().splitlines()[1:]}
+    #else:
+    negative = get_negatives(interactome,truth,pname)
+    print('first 10 negs',list(negative)[:10])
+    print('%d negatives and %d truth' % (len(negative),len(truth)))
     for d in directories:
         try:
             p = os.path.join(d,'config.conf')
@@ -357,9 +295,18 @@ def main(argv: str) -> None:
             print(e)
             return e
         POINT = conf[conf['value'] == 'POINT']['bool'].bool()
-        pr(d,negative,pname,'#',POINT)
+        if IGNORE_ADJ:
+            print('IGNORING ADJACENT NEGS....')
+            edges = make_edges(interactome.take([0,1],axis=1))
+            edges = {tuple(e) for e in edges}
+            print('interactome:',list(edges)[:10])
+            to_remove_1 = {(e[0],pname) for e in edges if (e[0],pname) not in truth and (e[1],pname) in truth}
+            to_remove_2 = {(e[1],pname) for e in edges if (e[1],pname) not in truth and (e[0],pname) in truth}
+            before_removing = len(negative)
+            negative = negative - to_remove_1 - to_remove_2
+            print('removing %d edge-adjacent positives\n'  %(before_removing-len(negative)))
 
-
+        pr(d,negative,truth,pname,POINT,ignore_adjacents=IGNORE_ADJ)
 
 if __name__ == '__main__':
     main(sys.argv)

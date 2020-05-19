@@ -15,23 +15,36 @@ import re
 import sys
 import os
 import utils
+from itertools import cycle
 
 import matplotlib.pyplot as plt
 
-# routines to verify that it makes sense to compare the precision and recall of 
-# the different algorithms by ensuring that they were computed on the same 
-# interactome, that they were predicting the same pathway, and that they used 
+# routines to verify that it makes sense to compare the precision and recall of
+# the different algorithms by ensuring that they were computed on the same
+# interactome, that they were predicting the same pathway, and that they used
 # the same negatives.
 
-def verify_negatives(lat: list) -> bool:
+def verify_negatives(lat: list,node_motivation=False,verbose=False) -> bool:
     """
     :lat     list of directory names
     :returns True iff the runs were made with the same negatives
     """
-    #get one of the lists of negatives as a dataframe
-    df = utils.read_df(lat[0],'negatives.csv')
-    #exploiting transitivity of identity, compare the first against all others
-    return all(df.equals(i) for i in [utils.read_df(j,'negatives.csv') for j in lat[1:]])
+    if node_motivation: ## skip this for now if node_motivation is specified.
+        negfilenames = ['negatives-nodes.csv','negatives-nodes-ignoreadj.csv']
+    else:
+        negfilenames = ['negatives.csv']
+
+    toReturn = {}
+    for negfilename in negfilenames:
+        #get one of the lists of negatives as a dataframe
+        df = utils.read_df(lat[0],negfilename)
+
+        if verbose:
+            for j in lat[1:]:
+                print(os.path.join(j,negfilename),df.equals(utils.read_df(j,negfilename)))
+        #exploiting transitivity of identity, compare the first against all others
+        toReturn[negfilename] = all(df.equals(i) for i in [utils.read_df(j,negfilename) for j in lat[1:]])
+    return all(list(toReturn.values()))
 
 def verify_pathway(lat: list) -> bool:
     """
@@ -57,16 +70,16 @@ def verify_interactome(lat: list) -> bool:
     #exploiting transitivity of identity, compare the first against all others
     return all(p == q for q in [f(l) for l in lat[1:]])
 
-def verify_coherence(lat: list) -> bool:
+def verify_coherence(lat: list,node_motivation=False) -> bool:
     """
     :lat     list of directory names
     :returns True iff all of the coherence checks pass
     """
-    return all([verify_negatives(lat),verify_pathway(lat),verify_interactome(lat)])
+    return all([verify_negatives(lat,node_motivation),verify_pathway(lat),verify_interactome(lat)])
 
 # routines that handle the plotting of the precision recall plots
 
-def pr(name: str,edges=True) -> (list,list):
+def pr(name: str,edges=True,ignore_adj=False) -> (list,list):
     """
     :name    name of directory
     :edges   (trivalent) boolean as to whether we are plotting edges,nodes or both
@@ -76,7 +89,10 @@ def pr(name: str,edges=True) -> (list,list):
     if edges == True:
         df = utils.read_df(name,'pr-edges.csv')
     elif edges == False:
-        df = utils.read_df(name,'pr-nodes.csv')
+        if ignore_adj == True:
+            df = utils.read_df(name,'pr-nodes-ignoreadj.csv')
+        else:
+            df = utils.read_df(name,'pr-nodes.csv')
     df = df.sort_values(by=['recall','precision'],ascending=[True,False])
     #df = df.sort_values('precision',ascending=False)
     recall = list(df['recall'])
@@ -137,7 +153,7 @@ def plot(lat: list, spath: str,edges=True) -> None:
     lat = [x.replace('HybridLinker','HL') for x in lat]
     lat = [x.replace('PerfectLinker','PeL') for x in lat]
     sname = str(edges)+'-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
-    #in order to incorporate the save path 
+    #in order to incorporate the save path
     #some more work needs to be done.
     plt.tight_layout()
     plt.subplots_adjust(left=0.21)
@@ -186,19 +202,77 @@ def plot_composite(lat: list, spath: str,) -> None:
         ax.set_ylabel('Precision')
         ax.grid(linestyle='--')
     #toggle axes
-    #plt.setp(axs, xlim=(0,1), ylim=(0,1)) 
+    #plt.setp(axs, xlim=(0,1), ylim=(0,1))
     #save the plot
     old_lat = [x.replace('HybridLinker','HL') for x in old_lat]
     old_lat = [x.replace('PerfectLinker','PeL') for x in old_lat]
     sname = 'composite-blowup.pdf'
-    #in order to incorporate the save path 
+    #in order to incorporate the save path
     #some more work needs to be done.
     plt.tight_layout()
     plt.subplots_adjust(left=0.21)
     plt.subplots_adjust(top=0.90)
     plt.savefig(os.path.join('../',spath,sname))
 
+def plot_node_motivation(lat: list, spath: str) -> None:
+    """
+    :lat         list of directory names
+    :spath       name of save path
+    :edges       (trivalent) boolean as to whether we are plotting edges,nodes or both
+    :returns     nothing
+    :side-effect saves a plot to spath
+    """
+    #initialize pyplot figure
+    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
 
+    color_cycle = cycle(['r','g','b', 'c', 'm', 'y', 'k'])
+    #plot each precision recall plot
+    for l in lat:
+        #get algorithm name for legend
+        lname = l.split('_')[0]
+        #plot
+        this_color = next(color_cycle)
+        recall,precision = pr(l,False,False)
+        recall2,precision2 = pr(l,False,True)
+        if len(recall) == 1:
+            this_marker = next(markers)
+            ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3)
+            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'*',marker=this_marker,ms=10,alpha=0.9)
+            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
+        else:
+            ax.plot(recall,precision,color=this_color,label=lname,lw=4,alpha=0.3)
+            ax.plot(recall2,precision2,color=this_color,label=lname +'*',lw=4,alpha=0.9)
+            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
+            ax.plot([recall[-1],recall2[-1]],[precision[-1],precision2[-1]],'--',color=this_color,alpha=0.3)
+
+    #format figure globally
+    #ax.legend()
+
+    title = ' '.join(lat[0].split('_')[1:])
+
+    ax.set_xlabel('Node Recall')
+    ax.set_ylabel('Node Precision')
+    ax.set_title('Reconstructing Wnt Proteins',fontsize=14)
+    ax.set_ylim(0,1.01)
+    ax.set_xlim(0,1.01)
+
+    sname = 'node-motivation-' + '-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
+
+    #in order to incorporate the save path
+    #some more work needs to be done.
+    plt.plot([], [], ' ', label="*No edge-adjacent\nnegatives")
+    fig.legend(loc='center right')
+    plt.tight_layout()
+    #plt.subplots_adjust(left=0.21)
+    #plt.subplots_adjust(top=0.90)
+    plt.savefig(os.path.join(spath,sname))
+    print('writing to %s'% (os.path.join(spath,sname)))
+    sname = sname.replace('.png','.pdf')
+    plt.savefig(os.path.join(spath,sname))
+    os.system('pdfcrop %s %s' % (os.path.join(spath,sname),os.path.join(spath,sname)))
+    print('writing to %s'% (os.path.join(spath,sname)))
 
 #handle input
 def main(args: list) -> None:
@@ -221,12 +295,24 @@ def main(args: list) -> None:
         os.chdir(path)
     except:
         print("path {} either doesn't exist or could not be accessed.".format(path))
-    if verify_coherence(directories):
-        plot(directories,spath,True)
-        #plot_composite(directories,spath)
+
+    ## these are HARD-CODED - need to make them arguments.
+    COMPOSITE=False
+    NODE_MOTIVATION=False
+    if verify_coherence(directories,NODE_MOTIVATION):
+        if COMPOSITE:
+            plot_composite(directories,spath)
+        elif NODE_MOTIVATION:
+            plot_node_motivation(directories,spath)
+        else: # plot regular PR
+            plot(directories,spath,True)
+
     else:
         print('coherence could not be established. Terminating...')
-        
+        print(verify_negatives(directories,NODE_MOTIVATION,True))
+        print(verify_pathway(directories))
+        print(verify_interactome(directories))
+
 
 
 
@@ -234,9 +320,3 @@ def main(args: list) -> None:
 
 if __name__ == '__main__':
     main(sys.argv)
-
-
-
-
-
-
