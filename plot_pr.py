@@ -269,6 +269,10 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     #plt.subplots_adjust(top=0.90)
     plt.savefig(os.path.join(spath,sname))
     print('writing to %s'% (os.path.join(spath,sname)))
+    sname = sname.replace('.png','.pdf')
+    plt.savefig(os.path.join(spath,sname))
+    os.system('pdfcrop %s %s' % (os.path.join(spath,sname),os.path.join(spath,sname)))
+    print('writing to %s'% (os.path.join(spath,sname)))
 
 #handle input
 def main(args: list) -> None:
