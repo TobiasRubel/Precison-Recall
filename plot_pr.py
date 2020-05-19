@@ -239,11 +239,11 @@ def plot_node_motivation(lat: list, spath: str) -> None:
         if len(recall) == 1:
             this_marker = next(markers)
             ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3)
-            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'*',marker=this_marker,ms=10,alpha=0.9)
+            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'(nearby)',marker=this_marker,ms=10,alpha=0.9)
             ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
         else:
             ax.plot(recall,precision,color=this_color,label=lname,lw=4,alpha=0.3)
-            ax.plot(recall2,precision2,color=this_color,label=lname +'*',lw=4,alpha=0.9)
+            ax.plot(recall2,precision2,color=this_color,label=lname +' (nearby)',lw=4,alpha=0.9)
             ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
             ax.plot([recall[-1],recall2[-1]],[precision[-1],precision2[-1]],'--',color=this_color,alpha=0.3)
 
@@ -262,8 +262,8 @@ def plot_node_motivation(lat: list, spath: str) -> None:
 
     #in order to incorporate the save path
     #some more work needs to be done.
-    plt.plot([], [], ' ', label="*No edge-adjacent\nnegatives")
-    fig.legend(loc='center right')
+    #plt.plot([], [], ' ', label="*No edge-adjacent\nnegatives")
+    plt.legend(loc='lower left')
     plt.tight_layout()
     #plt.subplots_adjust(left=0.21)
     #plt.subplots_adjust(top=0.90)
@@ -308,9 +308,12 @@ def main(args: list) -> None:
             plot(directories,spath,True)
 
     else:
-        print('coherence could not be established. Terminating...')
+        print('Coherence could not be established. Terminating...')
+        print('\nVerifying Negatives:')
         print(verify_negatives(directories,NODE_MOTIVATION,True))
+        print('\nVerifying Pathway:')
         print(verify_pathway(directories))
+        print('\nVerifying Interactome:')
         print(verify_interactome(directories))
 
 

@@ -59,7 +59,7 @@ def make_nodes(df: pd.DataFrame) -> set:
 def precision(prediction: set,truth:set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     try:
-        print('  old precision: %d nodes in truth or negs; %d in truth' % (len(prediction),len(prediction.intersection(truth))))
+        #print('  old precision: %d nodes in truth or negs; %d in truth' % (len(prediction),len(prediction.intersection(truth))))
         return len(prediction.intersection(truth))/(len(prediction))
     except:
         #an exception occurs just in case the prediction is neither in
@@ -78,10 +78,12 @@ def pr_nodes(predictions: pd.DataFrame,truth: set,negatives: set,pname:str,ranke
     """
     p = {} # dictionary of (recall, precision) pairs
 
-    print('first 10 nodes from pos:',list(truth)[:10])
+    if verbose:
+        print('first 10 nodes from pos:',list(truth)[:10])
     ## don't need to mess with negatives; they're alredady set.
-    print('{} NEGATIVE NODES ({} of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
-    print('first 10 nodes from negs:',list(negatives)[:10])
+    print('{} negative nodes ({} of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
+    if verbose:
+        print('first 10 nodes from negs:',list(negatives)[:10])
 
     ## if it's ranked and not a point, compute PR for ranking.
     if ranked and not point:
@@ -94,19 +96,20 @@ def pr_nodes(predictions: pd.DataFrame,truth: set,negatives: set,pname:str,ranke
         ## make pred_dictionary of (node,best_rank) key/value pairs.
         ## here, keep the lowest rank of the nodes.
         pred_dict = {}
-        for x in predictions[['#tail','head','rank','pathway_name']].values:
-            dict_key = (x[0],x[3])
-            if x[0] != 'SRC' and (x[0] not in pred_dict or x[2] < pred_dict[dict_key]):
-                pred_dict[dict_key] = x[2]
-            dict_key = (x[1],x[3])
-            if x[1] != 'SNK' and (x[1] not in pred_dict or x[2] < pred_dict[dict_key]):
-                pred_dict[dict_key] = x[2]
+        for u,v,r,pname in predictions[['#tail','head','rank','pathway_name']].values:
+            dict_key = (u,pname)
+            if u != 'SRC' and (dict_key not in pred_dict or r < pred_dict[dict_key]):
+                pred_dict[dict_key] = r
+            dict_key = (v,pname)
+            if v != 'SNK' and (dict_key not in pred_dict or r < pred_dict[dict_key]):
+                pred_dict[dict_key] = r
 
         # make pred_list as (pred,rank) tuples
         # sort in place by increasing rank.
         pred_list = [(k,v) for k,v in pred_dict.items()]
         pred_list.sort(key = lambda x: x[1])
-        print('first 10 elements of pred_list are',pred_list[:10])
+        if verbose:
+            print('first 10 elements of pred_list are',pred_list[:10])
         p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
 
     else:
@@ -166,13 +169,16 @@ def pr_fast(predictions:list,truth:set, negs:set, verbose=False,debug=False) -> 
 
         if verbose:# and counter % 100 == 0:
             print('processing prediction for value=%d (%d of %d): %d pos and %d negs encountered. prec %.2f and rec %.2f' % (val,counter,len(predictions),num_TPs,num_preds-num_TPs,prec,rec))
+            print('  pred:',pred,'pred in truth:',pred in truth,'pred in negs:',pred in negs)
 
         if debug:
             old_prec = precision(pred_set,truth,negs)
             old_rec = recall(pred_set,truth,negs)
             if old_prec != prec or old_rec != rec:
+                print('-'*10)
+                print('processing prediction for value=%d (%d of %d): %d pos and %d negs encountered. prec %.2f and rec %.2f' % (val,counter,len(predictions),num_TPs,num_preds-num_TPs,prec,rec))
                 print('  old prec %.2f and old rec %.2f' % (old_prec,old_rec))
-                sys.exit()
+                sys.exit('PREC/REC VALS ARE DIFFERENT! exiting.')
 
         # update the previous val to be this one.
         prev_val = val
@@ -210,6 +216,7 @@ def pr(dname: str,negative:set,truth:set,pname: str, point=False,ignore_adjacent
     try:
         p2 = [(k,v) for k, v in sorted(p2.items(), key=lambda item: item[0])]
         df = pd.DataFrame({'recall':[k for k,v in p2],'precision':[v for k,v in p2]})
+        print(df)
         if ignore_adjacents:
             print('wrote to %s' % (os.path.join(dname,'pr-nodes-ignoreadj.csv')))
             df.to_csv(os.path.join(dname,'pr-nodes-ignoreadj.csv'),index=False)
@@ -221,8 +228,10 @@ def pr(dname: str,negative:set,truth:set,pname: str, point=False,ignore_adjacent
 
     nf = pd.DataFrame({'negatives':sorted(list(negative))})
     if ignore_adjacents:
+        print('wrote to %s' % (os.path.join(dname,'negatives-nodes-ignoreadj.csv')))
         nf.to_csv(os.path.join(dname,'negatives-nodes-ignoreadj.csv'),index=False)
     else:
+        print('wrote to %s' % (os.path.join(dname,'negatives-nodes.csv')))
         nf.to_csv(os.path.join(dname,'negatives-nodes.csv'),index=False)
 
 def get_negatives(interactome: pd.DataFrame,positives: set,pname,num:int=0,bivalent=False) -> set:
@@ -283,12 +292,22 @@ def main(argv: str) -> None:
     #        negative = {eval(eval(x)) for x in f.read().splitlines()[1:]}
     #else:
     negative = get_negatives(interactome,truth,pname)
-    print('first 10 negs',list(negative)[:10])
-    print('%d negatives and %d truth' % (len(negative),len(truth)))
+    print('%d negatives and %d positives' % (len(negative),len(truth)))
+    if IGNORE_ADJ:
+        print('IGNORING ADJACENT NEGS....')
+        edges = make_edges(interactome.take([0,1],axis=1))
+        edges = {tuple(e) for e in edges}
+        to_remove_1 = {(e[0],pname) for e in edges if (e[0],pname) not in truth and (e[1],pname) in truth}
+        to_remove_2 = {(e[1],pname) for e in edges if (e[1],pname) not in truth and (e[0],pname) in truth}
+        negative_ignoreadj = negative - to_remove_1 - to_remove_2
+        print('--> removing %d edge-adjacent positives'  %(len(negative)-len(negative_ignoreadj)))
+        print('--> %d negatives_ignoreadj\n' % (len(negative_ignoreadj)))
+
     for d in directories:
+        print('\n'+'='*10,'Running',d,'='*10)
         try:
             p = os.path.join(d,'config.conf')
-            print(p)
+            print('config file:',p)
             conf = pd.read_csv(os.path.join(d,'config.conf'),sep=' = ',engine='python')
         except Exception as e:
             print('no conf file for {}'.format(d))
@@ -296,17 +315,9 @@ def main(argv: str) -> None:
             return e
         POINT = conf[conf['value'] == 'POINT']['bool'].bool()
         if IGNORE_ADJ:
-            print('IGNORING ADJACENT NEGS....')
-            edges = make_edges(interactome.take([0,1],axis=1))
-            edges = {tuple(e) for e in edges}
-            print('interactome:',list(edges)[:10])
-            to_remove_1 = {(e[0],pname) for e in edges if (e[0],pname) not in truth and (e[1],pname) in truth}
-            to_remove_2 = {(e[1],pname) for e in edges if (e[1],pname) not in truth and (e[0],pname) in truth}
-            before_removing = len(negative)
-            negative = negative - to_remove_1 - to_remove_2
-            print('removing %d edge-adjacent positives\n'  %(before_removing-len(negative)))
-
-        pr(d,negative,truth,pname,POINT,ignore_adjacents=IGNORE_ADJ)
+            pr(d,negative_ignoreadj,truth,pname,POINT,ignore_adjacents=IGNORE_ADJ)
+        else:
+            pr(d,negative,truth,pname,POINT,ignore_adjacents=IGNORE_ADJ)
 
 if __name__ == '__main__':
     main(sys.argv)

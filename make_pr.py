@@ -149,13 +149,13 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
         ## make pred_dictionary of (node,best_rank) key/value pairs.
         ## here, keep the lowest rank of the nodes.
         pred_dict = {}
-        for x in predictions[['#tail','head','rank','pathway_name']].values:
-            dict_key = (x[0],x[3])
-            if x[0] != 'SRC' and (x[0] not in pred_dict or x[2] < pred_dict[dict_key]):
-                pred_dict[dict_key] = x[2]
-            dict_key = (x[1],x[3])
-            if x[1] != 'SNK' and (x[1] not in pred_dict or x[2] < pred_dict[dict_key]):
-                pred_dict[dict_key] = x[2]
+        for u,v,r,pname in predictions[['#tail','head','rank','pathway_name']].values:
+            dict_key = (u,pname)
+            if u != 'SRC' and (dict_key not in pred_dict or r < pred_dict[dict_key]):
+                pred_dict[dict_key] = r
+            dict_key = (v,pname)
+            if v != 'SNK' and (dict_key not in pred_dict or r < pred_dict[dict_key]):
+                pred_dict[dict_key] = r
 
         # make pred_list as (pred,rank) tuples
         # sort in place by increasing rank.
