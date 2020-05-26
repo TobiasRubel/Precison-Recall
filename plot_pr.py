@@ -100,7 +100,7 @@ def pr(name: str,edges=True,ignore_adj=False) -> (list,list):
     return recall,precision
 
 
-def plot(lat: list, spath: str,edges=True) -> None:
+def plot(lat: list, spath: str,params=False,edges=True) -> None:
     """
     :lat         list of directory names
     :spath       name of save path
@@ -116,7 +116,10 @@ def plot(lat: list, spath: str,edges=True) -> None:
         #plot each precision recall plot
         for l in lat:
             #get algorithm name for legend
-            lname = l.split('/')[-1].split('_')[0]
+            if params:
+                lname = l.split('/')[-1]
+            else:
+                lname = l.split('/')[-1].split('_')[0]
             #plot
             ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
     elif edges == '#':
@@ -132,12 +135,18 @@ def plot(lat: list, spath: str,edges=True) -> None:
         #plot each precision recall plot
         for l in lat:
             #get algorithm name for legend
-            lname = l.split('/')[-1].split('_')[0]
+            if params:
+                lname = l.split('/')[-1]
+            else:
+                lname = l.split('/')[-1].split('_')[0]
             #plot
             cax.plot(*pr(l,False),label="_nolegend_",marker=next(markers),alpha=0.7)
     #format figure globally
     #ax.legend()
-    fig.legend(loc='center right')
+    if params:
+        plt.legend(loc='upper right')
+    else:
+        plt.legend(loc='center right')
     title = lat[0].split('/')[-1].split('_')[2] + ' Pathway'
     #fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
@@ -315,14 +324,15 @@ def main(args: list) -> None:
 
     ## these are HARD-CODED - need to make them arguments.
     COMPOSITE=False
-    NODE_MOTIVATION=True
+    NODE_MOTIVATION=False
+    PARAMS=True
     if verify_coherence(directories,NODE_MOTIVATION):
         if COMPOSITE:
             plot_composite(directories,spath)
         elif NODE_MOTIVATION:
             plot_node_motivation(directories,spath)
         else: # plot regular PR
-            plot(directories,spath,True)
+            plot(directories,spath,PARAMS,True)
 
     else:
         print('Coherence could not be established. Terminating...')

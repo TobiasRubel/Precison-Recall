@@ -70,7 +70,7 @@ def recall(prediction: set,truth: set,negs: set) -> float:
     prediction = {x for x in prediction if x in truth or x in negs}
     return len(prediction.intersection(truth))/(len(truth))
 
-def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname:str,ranked=False,point=False,verbose=True,debug=False) -> dict:
+def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname:str,ranked=False,point=False,verbose=False,debug=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -82,9 +82,9 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname
     #turn ground truth into set of edges
     truth = make_edges(ground[['#tail','head','pathway_name']])
     #check to see if this is a ranked method
+    print('  {} NEGATIVE EDGES ({}X of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
 
     #print('pr edges ranked = {}'.format(ranked))
-
     ## if it's ranked and not a point, compute PR for ranking.
     if ranked and not point:
         try:
@@ -97,7 +97,8 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname
         # sort in place by increasing rank.
         pred_list = [(frozenset((x[0],x[1],x[3])),x[2]) for x in predictions[['#tail','head','rank','pathway_name']].values if x[0] != 'SRC' and x[1] != 'SNK']
         pred_list.sort(key = lambda x: x[1])
-        print('first 10 elements of pred_list are',pred_list[:10])
+        if verbose:
+            print('first 10 elements of pred_list are',pred_list[:10])
         p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
 
     else:
@@ -111,7 +112,7 @@ def pr_edges(predictions: pd.DataFrame,ground: pd.DataFrame,negatives: set,pname
 
     return p
 
-def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,pname:str,ranked=False,point=False,verbose=True,debug=False) -> dict:
+def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,pname:str,ranked=False,point=False,verbose=False,debug=False) -> dict:
     """
     :prediction dataframe of ranked edges
     :ground     dataframe of "ground truth" edges
@@ -135,7 +136,7 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
         pass
     ## then stitch the negatives back together.
     negatives = {(x,pname) for x in negatives}
-    print('{} NEGATIVE NODES ({}X of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
+    print('  {} NEGATIVE NODES ({}X of {} total positives)'.format(len(negatives),len(negatives)/len(truth),len(truth)))
     #print('first 10 nodes from negs:',list(negatives)[:10])
 
     ## if it's ranked and not a point, compute PR for ranking.
@@ -161,7 +162,8 @@ def pr_nodes(predictions: pd.DataFrame,ground: pd.DataFrame,edge_negatives: set,
         # sort in place by increasing rank.
         pred_list = [(k,v) for k,v in pred_dict.items()]
         pred_list.sort(key = lambda x: x[1])
-        print('first 10 elements of pred_list are',pred_list[:10])
+        if verbose:
+            print('first 10 elements of pred_list are',pred_list[:10])
         p = pr_fast(pred_list,truth,negatives,verbose=verbose,debug=debug)
 
     else:
@@ -271,6 +273,7 @@ def pr(dname: str,negative:set,pname: str, edges=True,point=False) -> None:
     ranked = 'KSP index' in predictions.columns or 'rank' in predictions.columns
 
     if edges == True or edges == '#': ## RUN EDGES
+        print('\nRunning Edge PR')
         start = time.time()
         p1 = pr_edges(predictions,ground,negative,pname,ranked,point)
         end = time.time()
@@ -285,6 +288,7 @@ def pr(dname: str,negative:set,pname: str, edges=True,point=False) -> None:
             print(e)
 
     if edges == False or edges == '#': ## RUN NODES
+        print('\nRunning Node PR')
         start = time.time()
         p2 = pr_nodes(predictions,ground,negative,pname,ranked,point)
         end = time.time()
@@ -333,7 +337,7 @@ def main(argv: str) -> None:
         print('arguments are required...')
         return
     directories = [os.path.join(path,d) for d in directories]
-    
+
     #try:
     #    os.chdir(path)
     #except:
@@ -360,6 +364,7 @@ def main(argv: str) -> None:
             return e
         POINT = conf[conf['value'] == 'POINT']['bool'].bool()
         pr(d,negative,pname,'#',POINT)
+        
 
 
 
