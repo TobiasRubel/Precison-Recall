@@ -332,10 +332,12 @@ def main(argv: str) -> None:
     except:
         print('arguments are required...')
         return
-    try:
-        os.chdir(path)
-    except:
-        print("path either doesn't exist or could not be accessed.")
+    directories = [os.path.join(path,d) for d in directories]
+    
+    #try:
+    #    os.chdir(path)
+    #except:
+    #    print("path either doesn't exist or could not be accessed.")
     #fetch pathway name
     pname = directories[0].split('_')[-2]
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
