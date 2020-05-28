@@ -318,6 +318,19 @@ def get_negatives(interactome: pd.DataFrame,positives: set,pname,num:int=0,bival
     ## Nnode negs should be determined here too. - AR
     return psamp
 
+def pull_negatives(pname: str,ndir: str) -> set:
+    """
+    :pname   pathway name
+    :ndir    negatives directory
+    :returns negative set
+    """
+    print(os.listdir(ndir))
+    print(pname)
+    nset = next(x for x in os.listdir(ndir) if pname in x)
+    with open(os.path.join(ndir,nset),'r') as f:
+        return {eval(eval(x)) for x in f.read().splitlines()[1:]}
+
+
 def main(argv: str) -> None:
     """
     :args        first argument should be path where the directories reside
@@ -337,15 +350,17 @@ def main(argv: str) -> None:
     except:
         print("path either doesn't exist or could not be accessed.")
     #fetch pathway name
-    pname = directories[0].split('_')[-2]
+    pname = directories[0].split('_')[-1]
+    #path to hardcoded negatives
+    print(os.getcwd())
+    negpath = '../negatives'
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
-    COMPOSITE = False
-    if COMPOSITE == False:
+    FIXED_NEGATIVES = True
+    if FIXED_NEGATIVES == False:
         negative = get_negatives(interactome,make_edges(ground.take([0,1],axis=1)),pname)
     else:
-        with open(os.path.join(directories[0],'negatives.csv'),'r') as f:
-            negative = {eval(eval(x)) for x in f.read().splitlines()[1:]}
+        negative = pull_negatives(pname,negpath)
     print('%d negatives' % (len(negative)))
     for d in directories:
         try:

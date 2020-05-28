@@ -115,8 +115,9 @@ def plot(lat: list, spath: str,edges=True) -> None:
         ax = fig.add_subplot(111)
         #plot each precision recall plot
         for l in lat:
+            print(l)
             #get algorithm name for legend
-            lname = l.split('_')[0]
+            lname = '-'.join([l.split('_')[0],l.split('_')[-1]])
             #plot
             ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
     elif edges == '#':
@@ -137,7 +138,10 @@ def plot(lat: list, spath: str,edges=True) -> None:
             cax.plot(*pr(l,False),label="_nolegend_",marker=next(markers),alpha=0.7)
     #format figure globally
     #ax.legend()
-    fig.legend(loc='center left')
+    if edges == "#":
+        fig.legend(loc='center left')
+    else:
+        ax.legend(loc='top right')
     title = ' '.join(lat[0].split('_')[1:])
     fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
@@ -156,7 +160,8 @@ def plot(lat: list, spath: str,edges=True) -> None:
     #in order to incorporate the save path
     #some more work needs to be done.
     plt.tight_layout()
-    plt.subplots_adjust(left=0.21)
+    if edges == "#":
+        plt.subplots_adjust(left=0.21)
     plt.subplots_adjust(top=0.90)
     plt.savefig(os.path.join('../',spath,sname))
 

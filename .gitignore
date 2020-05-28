@@ -1,5 +1,6 @@
 data/*
 plots/*
+refactor-test-data/*
 variance_materials/**
 !variance_matierals/variance_plot.py
 __pycache__/*
