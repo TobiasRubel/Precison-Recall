@@ -100,7 +100,7 @@ def pr(name: str,edges=True,ignore_adj=False) -> (list,list):
     return recall,precision
 
 
-def plot(lat: list, spath: str,edges=True) -> None:
+def plot(lat: list, spath: str,params=False,edges=True) -> None:
     """
     :lat         list of directory names
     :spath       name of save path
@@ -117,7 +117,11 @@ def plot(lat: list, spath: str,edges=True) -> None:
         for l in lat:
             print(l)
             #get algorithm name for legend
-            lname = '-'.join([l.split('_')[0],l.split('_')[-1]])
+            #lname = '-'.join([l.split('_')[0],l.split('_')[-1]])
+            if params:
+                lname = l.split('/')[-1]
+            else:
+                lname = l.split('/')[-1].split('_')[0]
             #plot
             ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
     elif edges == '#':
@@ -133,37 +137,53 @@ def plot(lat: list, spath: str,edges=True) -> None:
         #plot each precision recall plot
         for l in lat:
             #get algorithm name for legend
-            lname = l.split('_')[0]
+            if params:
+                lname = l.split('/')[-1]
+            else:
+                lname = l.split('/')[-1].split('_')[0]
             #plot
             cax.plot(*pr(l,False),label="_nolegend_",marker=next(markers),alpha=0.7)
     #format figure globally
     #ax.legend()
-    if edges == "#":
-        fig.legend(loc='center left')
+    if params:
+        plt.legend(loc='upper right')
     else:
-        ax.legend(loc='top right')
-    title = ' '.join(lat[0].split('_')[1:])
-    fig.suptitle(title,fontsize=16)
+        plt.legend(loc='center right')
+    title = lat[0].split('/')[-1].split('_')[2] + ' Pathway'
+    #fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
-    ax.set_title('Interactions')
+    ax.set_title(title + ' Interactions')
+    ax.grid(linestyle='--')
+    ax.set_xlim(0,1)
+    ax.set_ylim(0.1)
     if edges == '#':
         cax.set_xlabel('Recall')
         cax.set_ylabel('Precision')
-        cax.set_title('Proteins')
+        cax.set_title(title + ' Proteins')
         cax.grid(linestyle='--')
-    ax.grid(linestyle='--')
+        cax.set_xlim(0,1)
+        cax.set_ylim(0,1)
+
     #save the plot
+    print(lat)
     lat = [x.replace('HybridLinker','HL') for x in lat]
     lat = [x.replace('PerfectLinker','PeL') for x in lat]
-    sname = str(edges)+'-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
+
+    methods = [x.split('/')[-1].split('_') for x in lat]
+    infix = [m[0] for m in methods]+methods[0][1:]
+    if edges:
+        sname = 'edges-'+'-'.join(infix)+'.png'
+    else:
+        sname = 'nodes-'+'-'.join(infix)+'.png'
+
     #in order to incorporate the save path
     #some more work needs to be done.
     plt.tight_layout()
-    if edges == "#":
-        plt.subplots_adjust(left=0.21)
-    plt.subplots_adjust(top=0.90)
-    plt.savefig(os.path.join('../',spath,sname))
+    #plt.subplots_adjust(left=0.21)
+    #plt.subplots_adjust(top=0.90)
+    print(spath,sname)
+    plt.savefig(os.path.join(spath,sname))
 
 def plot_composite(lat: list, spath: str,) -> None:
     """
@@ -236,7 +256,7 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     #plot each precision recall plot
     for l in lat:
         #get algorithm name for legend
-        lname = l.split('_')[0]
+        lname = l.split('/')[-1].split('_')[0]
         #plot
         this_color = next(color_cycle)
         recall,precision = pr(l,False,False)
@@ -244,7 +264,7 @@ def plot_node_motivation(lat: list, spath: str) -> None:
         if len(recall) == 1:
             this_marker = next(markers)
             ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3)
-            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'(nearby)',marker=this_marker,ms=10,alpha=0.9)
+            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +' (nearby)',marker=this_marker,ms=10,alpha=0.9)
             ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
         else:
             ax.plot(recall,precision,color=this_color,label=lname,lw=4,alpha=0.3)
@@ -263,12 +283,14 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     ax.set_ylim(0,1.01)
     ax.set_xlim(0,1.01)
 
-    sname = 'node-motivation-' + '-'.join([x.split('_')[0] for x in lat]+lat[0].split('_')[1:])+'.png'
+    methods = [x.split('/')[-1].split('_') for x in lat]
+    infix = [m[0] for m in methods]+methods[0][1:]
+    sname = 'node-motivation-' + '-'.join(infix)+'.png'
 
     #in order to incorporate the save path
     #some more work needs to be done.
     #plt.plot([], [], ' ', label="*No edge-adjacent\nnegatives")
-    plt.legend(loc='lower left')
+    plt.legend(loc='lower left',fontsize=8)
     plt.tight_layout()
     #plt.subplots_adjust(left=0.21)
     #plt.subplots_adjust(top=0.90)
@@ -289,28 +311,30 @@ def main(args: list) -> None:
     :side-effect plots precision recall if possible
     """
     #get current directory to pass through to plot
-    cdir = os.getcwd()
+    #cdir = os.getcwd()
     #change to working directory
     try:
         path,spath,directories = args[1],args[2],sorted(list(set(args[3:])))
         print('plotting the following: {}'.format(directories))
     except:
         print('arguments are required...')
-    try:
-        os.chdir(path)
-    except:
-        print("path {} either doesn't exist or could not be accessed.".format(path))
+    directories = [os.path.join(path,d) for d in directories]
+    #try:
+    #    os.chdir(path)
+    #except:
+    #    print("path {} either doesn't exist or could not be accessed.".format(path))
 
     ## these are HARD-CODED - need to make them arguments.
     COMPOSITE=False
     NODE_MOTIVATION=False
+    PARAMS=True
     if verify_coherence(directories,NODE_MOTIVATION):
         if COMPOSITE:
             plot_composite(directories,spath)
         elif NODE_MOTIVATION:
             plot_node_motivation(directories,spath)
         else: # plot regular PR
-            plot(directories,spath,True)
+            plot(directories,spath,PARAMS,True)
 
     else:
         print('Coherence could not be established. Terminating...')
