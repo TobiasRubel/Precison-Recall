@@ -356,9 +356,12 @@ def main(argv: str) -> None:
     #except:
     #    print("path either doesn't exist or could not be accessed.")
     #fetch pathway name
-    pname = directories[0].split('_')[-1]
+    pname = directories[0].split('/')[-1].split('_')[2]
     #path to hardcoded negatives
-    negpath = '{}../negatives'.format(path)
+    prefix = '/'.join(argv[0].split('/')[:-1])
+    negpath = '{}/negatives'.format(prefix)
+    print('NEGPATH:',negpath)
+    #negpath = '{}../negatives'.format(path)
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
     FIXED_NEGATIVES = True
