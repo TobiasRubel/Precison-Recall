@@ -358,8 +358,7 @@ def main(argv: str) -> None:
     #fetch pathway name
     pname = directories[0].split('_')[-1]
     #path to hardcoded negatives
-    print(os.getcwd())
-    negpath = '../negatives'
+    negpath = '{}../negatives'.format(path)
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
     FIXED_NEGATIVES = True
