@@ -101,10 +101,12 @@ def parse_args(ALL_PATHWAYS,ALL_METHODS):
         if any([p not in ALL_PATHWAYS for p in PATHWAYS]):
             sys.exit('\nERROR: Pathways can be "all" or from {}'.format(ALL_PATHWAYS))
     #patch out problem pathways FIX THIS !!
-    PATHWAYS.remove('ID')
-    PATHWAYS.remove('IL')
-    PATHWAYS.remove('IL9')
-    PATHWAYS.remove('RAGE')
+    PATHWAYS = set(PATHWAYS)
+    PATHWAYS.discard('ID')
+    PATHWAYS.discard('IL')
+    #PATHWAYS.discard('IL9')
+    PATHWAYS.discard('RAGE')
+    PATHWAYS = list(PATHWAYS)
     ## check that at least one method is specified
     if args.methods == None and not args.node_pr:
         parser.print_help()
