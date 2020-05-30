@@ -366,7 +366,7 @@ def main(argv: str) -> None:
     print('NEGPATH:',negpath)
     interactome = load_df_tab(os.path.join(directories[0],'interactome.csv'))
     ground = load_df_tab(os.path.join(directories[0],'ground.csv'))
-    FIXED_NEGATIVES = True
+    FIXED_NEGATIVES = False
     if FIXED_NEGATIVES == False:
         negative = get_negatives(interactome,make_edges(ground.take([0,1],axis=1)),pname)
     else:

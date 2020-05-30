@@ -16,7 +16,7 @@ import sys
 import os
 import utils
 from itertools import cycle
-
+import pandas as pd
 import matplotlib.pyplot as plt
 
 # routines to verify that it makes sense to compare the precision and recall of
@@ -185,6 +185,13 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     print(spath,sname)
     plt.savefig(os.path.join(spath,sname))
 
+def fmax(csvdoc: str) -> float:
+   df = pd.read_csv(csvdoc)
+   vs = [tuple(x) for x in df.values]
+   f1 = lambda p,r:2*((p*r)/(p+r))
+   return max([f1(*v) for v in vs])
+
+
 def plot_composite(lat: list, spath: str,) -> None:
     """
     :lat         list of directory names
@@ -199,7 +206,7 @@ def plot_composite(lat: list, spath: str,) -> None:
     plotloc = axs.flat
     print(axs)
     #turn list of methods into list of tuples of things to plot together:
-    combine_key = {'PRAUG-BTB':'BTB','PRAUG-SP':'SP','PRAUG-PL':'PL','HybridLinker-RN':'ResponseNet','PRAUG-PCSF':'PCSF','PRAUG-RWR':'RWR'}
+    combine_key = {'PRAUG-BTB':'BTB','PRAUG-SP':'SP','PRAUG-PL':'PL','PRAUG-RN':'RN','PRAUG-PCSF':'PCSF','PRAUG-RWR':'RWR'}
     partner = lambda x: next(y for y in lat if re.match('^{}_'.format(combine_key[x]),y))
     old_lat = lat
     p = lat[0].split('/')[0]
@@ -212,6 +219,20 @@ def plot_composite(lat: list, spath: str,) -> None:
         loc = next(plotloc)
         print(loc)
         #get algorithm name for legend
+        #plot
+        print(l[0])
+        f0 = fmax(os.path.join(l[0],'pr-edges.csv'))
+        l1name = l[0].split('/')[-1].split('_')[0]+' fmax = {}'.format(f0)
+        f1 = fmax(os.path.join(l[1],'pr-edges.csv'))
+        loc.plot(*pr(l[0],True),label=l1name,marker=next(markers),alpha=0.7)
+        #get algorithm name for legend (once more with feeling!)
+        l2name = l[1].split('/')[-1].split('_')[0]+' fmax = {}'.format(f1)
+        #plot
+        loc.plot(*pr(l[1],True),label=l2name,marker=next(markers),alpha=0.7)
+        """
+        loc = next(plotloc)
+        print(loc)
+        #get algorithm name for legend
         l1name = l[0].split('_')[0]
         #plot
         loc.plot(*pr(l[0],True),label=l1name,marker=next(markers),alpha=0.7)
@@ -219,16 +240,15 @@ def plot_composite(lat: list, spath: str,) -> None:
         l2name = l[1].split('_')[0]
         #plot
         loc.plot(*pr(l[1],True),label=l2name,marker=next(markers),alpha=0.7)
-    #cax = fig.add_subplot(122)
+        """
     #format figure globally
-    #ax.legend()
-    fig.legend(loc='center left')
     title = 'Composite Interaction Performance across 29 Pathways'
     fig.suptitle(title,fontsize=16)
     for ax in axs.flat:
         ax.set_xlabel('Recall')
         ax.set_ylabel('Precision')
         ax.grid(linestyle='--')
+        ax.legend(loc='top right')
     #toggle axes
     #plt.setp(axs, xlim=(0,1), ylim=(0,1))
     #save the plot

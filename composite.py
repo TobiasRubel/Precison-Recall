@@ -172,6 +172,10 @@ def main(argv):
         join(ALG,PATHWAYS,kargs).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
         composit_pathway.to_csv(os.path.join(ddict[ALG],'ground.csv'),sep='\t',index=False)
         interactome = os.path.abspath(INTERACTOMES[INTERACTOME]) ## to avoid relative path errors
+        with open(os.path.join(ddict[ALG],'.pathway_log'),'w') as f:
+                for x in PATHWAYS:
+                    f.write('{}\n'.format(x))
+
         if not os.path.isfile(os.path.join(DEST,'interactome.csv')):
             if not os.path.isfile(interactome):
                 sys.exit("ERROR: interactome doesn't exist:",interactome)
@@ -179,7 +183,7 @@ def main(argv):
                 os.remove(os.path.join(ddict[ALG],'interactome.csv'))
             except:
                 pass
-        os.symlink(interactome,os.path.join(ddict[ALG],'interactome.csv'))
+            os.symlink(interactome,os.path.join(ddict[ALG],'interactome.csv'))
         shutil.copy('config.conf',os.path.join(ddict[ALG],'config.conf'))
 
 
