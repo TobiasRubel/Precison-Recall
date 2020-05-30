@@ -195,14 +195,17 @@ def plot_composite(lat: list, spath: str,) -> None:
     """
     #initialize pyplot figure
     markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
-    fig, axs = plt.subplots(2, 2,figsize=(25,15))
+    fig, axs = plt.subplots(2, 3,figsize=(25,15))
     plotloc = axs.flat
     print(axs)
     #turn list of methods into list of tuples of things to plot together:
-    combine_key = {'HybridLinker-BTB':'BowtieBuilder','HybridLinker-SP':'ShortestPaths','HybridLinker-PL':'PathLinker','HybridLinker-RN':'ResponseNet','HybridLinker':'PathLinker'}
+    combine_key = {'PRAUG-BTB':'BTB','PRAUG-SP':'SP','PRAUG-PL':'PL','HybridLinker-RN':'ResponseNet','PRAUG-PCSF':'PCSF','PRAUG-RWR':'RWR'}
     partner = lambda x: next(y for y in lat if re.match('^{}_'.format(combine_key[x]),y))
     old_lat = lat
+    p = lat[0].split('/')[0]
+    lat = [x.split('/')[-1] for x in lat]
     lat = [(x,partner(x.split('_')[0])) for x in lat if x.split('_')[0] in combine_key]
+    lat = [tuple([os.path.join(p,x) for x in l]) for l in lat]
     print(lat)
     #plot each precision recall plot
     for l in lat:
@@ -237,7 +240,7 @@ def plot_composite(lat: list, spath: str,) -> None:
     plt.tight_layout()
     plt.subplots_adjust(left=0.21)
     plt.subplots_adjust(top=0.90)
-    plt.savefig(os.path.join('../',spath,sname))
+    plt.savefig(os.path.join(spath,sname))
 
 def plot_node_motivation(lat: list, spath: str) -> None:
     """
@@ -325,7 +328,7 @@ def main(args: list) -> None:
     #    print("path {} either doesn't exist or could not be accessed.".format(path))
 
     ## these are HARD-CODED - need to make them arguments.
-    COMPOSITE=False
+    COMPOSITE=True
     NODE_MOTIVATION=False
     PARAMS=True
     if verify_coherence(directories,NODE_MOTIVATION):

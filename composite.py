@@ -33,9 +33,10 @@ def sanity_check(A:str,pathways: list) -> bool:
     return True
 
 
-def join(A: str,PATHWAYS) -> pd.DataFrame:
+def join(A: str,PATHWAYS,kargs) -> pd.DataFrame:
     global DATA_PATH
-    dirs = [x for x in os.listdir(DATA_PATH) if re.match("^{}_".format(A),x) and not 'composit' in x and any(P in x for P in PATHWAYS)]
+    print(kargs[A])
+    dirs = [x for x in os.listdir(DATA_PATH) if re.match("^{}_".format(A),x) and kargs[A] in x and not 'composit' in x and any(P in x for P in PATHWAYS)]
     print(A)
     print(dirs)
     print('*'*50)
@@ -126,10 +127,8 @@ def main(argv):
 
     ## PATHWAYS directory includes allNPnodes.txt and NP_pathways.zip; make sure that '-' is in the variable.
     ALL_PATHWAYS = {x.split('_')[2] for x in os.listdir(DATA_PATH) if '-' in x and not 'composite' in x}
-    ALL_PATHWAYS.discard('Oncostatin')
-    ALL_PATHWAYS.add('Oncostatin_M')
-    ALL_PATHWAYS.discard('TGF')
-    ALL_PATHWAYS.add('TGF_beta_Receptor')
+    print(ALL_PATHWAYS)
+    #return
     ALL_METHODS = {x.split('_')[0] for x in os.listdir(DATA_PATH)}
     ## parse arguments
     PATHWAYS,ALGORITHMS,args = parse_args(ALL_PATHWAYS,ALL_METHODS)
@@ -157,7 +156,10 @@ def main(argv):
     #make empty directories
     ddict = dict()
     for ALG in ALGORITHMS:
-        name = '_'.join([ALG,INTERACTOME,'composite',kargs[ALG]])
+        if kargs[ALG] != '':
+            name = '_'.join([ALG,INTERACTOME,'composite',kargs[ALG]])
+        else:
+            name = '_'.join([ALG,INTERACTOME,'composite'])
         DEST = os.path.join(DATA_PATH,name)
         ddict[ALG] = DEST
         try:
@@ -167,7 +169,7 @@ def main(argv):
     #populate directories with union predictions
     for ALG in ALGORITHMS:
         #os.remove(os.path.join(ddict[ALG],'*'))
-        join(ALG,PATHWAYS).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
+        join(ALG,PATHWAYS,kargs).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
         composit_pathway.to_csv(os.path.join(ddict[ALG],'ground.csv'),sep='\t',index=False)
         interactome = os.path.abspath(INTERACTOMES[INTERACTOME]) ## to avoid relative path errors
         if not os.path.isfile(os.path.join(DEST,'interactome.csv')):
@@ -177,7 +179,7 @@ def main(argv):
                 os.remove(os.path.join(ddict[ALG],'interactome.csv'))
             except:
                 pass
-            os.symlink(interactome,os.path.join(ddict[ALG],'interactome.csv'))
+        os.symlink(interactome,os.path.join(ddict[ALG],'interactome.csv'))
         shutil.copy('config.conf',os.path.join(ddict[ALG],'config.conf'))
 
 
