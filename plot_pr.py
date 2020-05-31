@@ -16,7 +16,7 @@ import sys
 import os
 import utils
 from itertools import cycle
-
+import pandas as pd
 import matplotlib.pyplot as plt
 
 # routines to verify that it makes sense to compare the precision and recall of
@@ -24,13 +24,15 @@ import matplotlib.pyplot as plt
 # interactome, that they were predicting the same pathway, and that they used
 # the same negatives.
 
-def verify_negatives(lat: list,node_motivation=False,verbose=False) -> bool:
+def verify_negatives(lat: list,node_motivation=False,composite=False,verbose=False) -> bool:
     """
     :lat     list of directory names
     :returns True iff the runs were made with the same negatives
     """
     if node_motivation: ## skip this for now if node_motivation is specified.
         negfilenames = ['negatives-nodes.csv','negatives-nodes-ignoreadj.csv']
+    elif composite:
+        return True
     else:
         negfilenames = ['negatives.csv']
 
@@ -70,12 +72,12 @@ def verify_interactome(lat: list) -> bool:
     #exploiting transitivity of identity, compare the first against all others
     return all(p == q for q in [f(l) for l in lat[1:]])
 
-def verify_coherence(lat: list,node_motivation=False) -> bool:
+def verify_coherence(lat: list,node_motivation=False,composite=False) -> bool:
     """
     :lat     list of directory names
     :returns True iff all of the coherence checks pass
     """
-    return all([verify_negatives(lat,node_motivation),verify_pathway(lat),verify_interactome(lat)])
+    return all([verify_negatives(lat,node_motivation,composite),verify_pathway(lat),verify_interactome(lat)])
 
 # routines that handle the plotting of the precision recall plots
 
@@ -185,6 +187,13 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     print(spath,sname)
     plt.savefig(os.path.join(spath,sname))
 
+def fmax(csvdoc: str) -> float:
+   df = pd.read_csv(csvdoc)
+   vs = [tuple(x) for x in df.values]
+   f1 = lambda p,r:2*((p*r)/(p+r))
+   return max([f1(*v) for v in vs])
+
+
 def plot_composite(lat: list, spath: str,) -> None:
     """
     :lat         list of directory names
@@ -194,18 +203,35 @@ def plot_composite(lat: list, spath: str,) -> None:
     :side-effect saves a plot to spath
     """
     #initialize pyplot figure
-    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
-    fig, axs = plt.subplots(2, 2,figsize=(25,15))
+    markers = iter(['o','v','^','<','>','p','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
+    fig, axs = plt.subplots(2, 3,figsize=(25,15))
     plotloc = axs.flat
     print(axs)
     #turn list of methods into list of tuples of things to plot together:
-    combine_key = {'HybridLinker-BTB':'BowtieBuilder','HybridLinker-SP':'ShortestPaths','HybridLinker-PL':'PathLinker','HybridLinker-RN':'ResponseNet','HybridLinker':'PathLinker'}
+    combine_key = {'PRAUG-BTB':'BTB','PRAUG-SP':'SP','PRAUG-PL':'PL','PRAUG-RN':'RN','PRAUG-PCSF':'PCSF','PRAUG-RWR':'RWR'}
     partner = lambda x: next(y for y in lat if re.match('^{}_'.format(combine_key[x]),y))
     old_lat = lat
+    p = lat[0].split('/')[0]
+    lat = [x.split('/')[-1] for x in lat]
     lat = [(x,partner(x.split('_')[0])) for x in lat if x.split('_')[0] in combine_key]
+    lat = [tuple([os.path.join(p,x) for x in l]) for l in lat]
     print(lat)
     #plot each precision recall plot
     for l in lat:
+        loc = next(plotloc)
+        print(loc)
+        #get algorithm name for legend
+        #plot
+        print(l[0])
+        f0 = fmax(os.path.join(l[0],'pr-edges.csv'))
+        l1name = l[0].split('/')[-1].split('_')[0]+' fmax = {}'.format(f0)
+        f1 = fmax(os.path.join(l[1],'pr-edges.csv'))
+        loc.plot(*pr(l[0],True),label=l1name,marker=next(markers),markersize=10,color='deepskyblue',alpha=1.0)
+        #get algorithm name for legend (once more with feeling!)
+        l2name = l[1].split('/')[-1].split('_')[0]+' fmax = {}'.format(f1)
+        #plot
+        loc.plot(*pr(l[1],True),label=l2name,marker=next(markers),markersize=10,color='blueviolet',alpha=1.0)
+        """
         loc = next(plotloc)
         print(loc)
         #get algorithm name for legend
@@ -216,28 +242,28 @@ def plot_composite(lat: list, spath: str,) -> None:
         l2name = l[1].split('_')[0]
         #plot
         loc.plot(*pr(l[1],True),label=l2name,marker=next(markers),alpha=0.7)
-    #cax = fig.add_subplot(122)
+        """
     #format figure globally
-    #ax.legend()
-    fig.legend(loc='center left')
     title = 'Composite Interaction Performance across 29 Pathways'
     fig.suptitle(title,fontsize=16)
+    plt.xticks(fontsize=14)
     for ax in axs.flat:
-        ax.set_xlabel('Recall')
-        ax.set_ylabel('Precision')
+        ax.set_xlabel('Recall',fontsize=14)
+        ax.set_ylabel('Precision',fontsize=14)
         ax.grid(linestyle='--')
+        ax.legend(loc='top right')
     #toggle axes
-    #plt.setp(axs, xlim=(0,1), ylim=(0,1))
+    plt.setp(axs, xlim=(0,1), ylim=(0,1))
     #save the plot
     old_lat = [x.replace('HybridLinker','HL') for x in old_lat]
     old_lat = [x.replace('PerfectLinker','PeL') for x in old_lat]
-    sname = 'composite-blowup.pdf'
+    sname = 'full-composite.pdf'
     #in order to incorporate the save path
     #some more work needs to be done.
     plt.tight_layout()
-    plt.subplots_adjust(left=0.21)
+    #plt.subplots_adjust(left=0.21)
     plt.subplots_adjust(top=0.90)
-    plt.savefig(os.path.join('../',spath,sname))
+    plt.savefig(os.path.join(spath,sname))
 
 def plot_node_motivation(lat: list, spath: str) -> None:
     """
@@ -325,16 +351,18 @@ def main(args: list) -> None:
     #    print("path {} either doesn't exist or could not be accessed.".format(path))
 
     ## these are HARD-CODED - need to make them arguments.
-    COMPOSITE=False
+    COMPOSITE=True
     NODE_MOTIVATION=False
     PARAMS=True
-    if verify_coherence(directories,NODE_MOTIVATION):
+    if verify_coherence(directories,NODE_MOTIVATION,COMPOSITE):
         if COMPOSITE:
             plot_composite(directories,spath)
         elif NODE_MOTIVATION:
             plot_node_motivation(directories,spath)
         else: # plot regular PR
             plot(directories,spath,PARAMS,True)
+        return
+
 
     else:
         print('Coherence could not be established. Terminating...')

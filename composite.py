@@ -160,7 +160,10 @@ def main(argv):
     #make empty directories
     ddict = dict()
     for ALG in ALGORITHMS:
-        name = '_'.join([ALG,INTERACTOME,'composite',kargs[ALG]])
+        if kargs[ALG] != '':
+            name = '_'.join([ALG,INTERACTOME,'composite',kargs[ALG]])
+        else:
+            name = '_'.join([ALG,INTERACTOME,'composite'])
         DEST = os.path.join(DATA_PATH,name)
         ddict[ALG] = DEST
         try:
@@ -173,6 +176,10 @@ def main(argv):
         join(ALG,PATHWAYS,kargs).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
         composit_pathway.to_csv(os.path.join(ddict[ALG],'ground.csv'),sep='\t',index=False)
         interactome = os.path.abspath(INTERACTOMES[INTERACTOME]) ## to avoid relative path errors
+        with open(os.path.join(ddict[ALG],'.pathway_log'),'w') as f:
+                for x in PATHWAYS:
+                    f.write('{}\n'.format(x))
+
         if not os.path.isfile(os.path.join(DEST,'interactome.csv')):
             if not os.path.isfile(interactome):
                 sys.exit("ERROR: interactome doesn't exist:",interactome)
