@@ -15,14 +15,15 @@ import sys
 
 
 
-DATA_PATH = 'refactor-test-data'
+#DATA_PATH = 'refactor-test-data'
+DATA_PATH = '/Volumes/compbio/2020-05-PRAUG/runs'
 
 NEG_PATH = 'negatives'
 
 def sanity_check(A:str,pathways: list) -> bool:
     """
     :A       name of algorithm
-    :returns whether data exists for A for all pathways 
+    :returns whether data exists for A for all pathways
     """
     global DATA_PATH
     dirs = [x for x in os.listdir(DATA_PATH) if A in x]
@@ -33,11 +34,12 @@ def sanity_check(A:str,pathways: list) -> bool:
     return True
 
 
-def join(A: str,PATHWAYS) -> pd.DataFrame:
+def join(A: str,PATHWAYS,kargs) -> pd.DataFrame:
     global DATA_PATH
-    dirs = [x for x in os.listdir(DATA_PATH) if re.match("^{}_".format(A),x) and not 'composit' in x and any(P in x for P in PATHWAYS)]
+    dirs = [x for x in os.listdir(DATA_PATH) if re.match("^{}_.*_{}$".format(A,kargs[A]),x) and not 'composit' in x and any(P in x for P in PATHWAYS)]
     print(A)
     print(dirs)
+    ## need to preserve args.
     print('*'*50)
     edge_lists = [os.path.join(DATA_PATH,os.path.join(d,'ranked-edges.csv')) for d in dirs]
     df = pd.read_csv(edge_lists[0],sep='\t')
@@ -76,7 +78,7 @@ def parse_args(ALL_PATHWAYS,ALL_METHODS):
     parser.add_argument("-p","--pathways",metavar='STR',nargs="+",help="A list of pathways to make predictions for. Possible options are 'all' or:\n{}".format("\n".join(ALL_PATHWAYS)))
     parser.add_argument("-m","--methods",metavar='STR',nargs="+",help="A list of pathway reconstruction algorithms to run. Possible options are 'all' or:\n{}".format("\n".join(ALL_METHODS)))
     parser.add_argument("-i","--interactome",type=str,default='2018',help="The year of interactome. Possible options are '2015' and '2018'. Defaults to '2018'.")
-    
+
     group = parser.add_argument_group('Pathway Reconstruction Method Arguments')
     group.add_argument('-k',type=int,metavar='INT',default=500,help="PathLinker: number of shortest paths (k). Default 500.")
     group.add_argument('-y',type=int,metavar='INT',default=20,help="ResponseNet: sparsity parameter (gamma). Default 20.")
@@ -100,10 +102,10 @@ def parse_args(ALL_PATHWAYS,ALL_METHODS):
         if any([p not in ALL_PATHWAYS for p in PATHWAYS]):
             sys.exit('\nERROR: Pathways can be "all" or from {}'.format(ALL_PATHWAYS))
     #patch out problem pathways FIX THIS !!
-    PATHWAYS.remove('ID')
-    PATHWAYS.remove('IL')
-    PATHWAYS.remove('IL9')
-    PATHWAYS.remove('RAGE')
+    #PATHWAYS.remove('ID')
+    #PATHWAYS.remove('IL')
+    #PATHWAYS.remove('IL9')
+    #PATHWAYS.remove('RAGE')
     ## check that at least one method is specified
     if args.methods == None and not args.node_pr:
         parser.print_help()
@@ -125,12 +127,13 @@ def main(argv):
     }
 
     ## PATHWAYS directory includes allNPnodes.txt and NP_pathways.zip; make sure that '-' is in the variable.
-    ALL_PATHWAYS = {x.split('_')[2] for x in os.listdir(DATA_PATH) if '-' in x and not 'composite' in x}
-    ALL_PATHWAYS.discard('Oncostatin')
-    ALL_PATHWAYS.add('Oncostatin_M')
-    ALL_PATHWAYS.discard('TGF')
-    ALL_PATHWAYS.add('TGF_beta_Receptor')
-    ALL_METHODS = {x.split('_')[0] for x in os.listdir(DATA_PATH)}
+    ALL_PATHWAYS = {x.split('_')[2] for x in os.listdir(DATA_PATH) if len(x.split('_'))>=3 and not 'composite' in x}
+    #ALL_PATHWAYS.discard('Oncostatin')
+    #ALL_PATHWAYS.add('Oncostatin_M')
+    #ALL_PATHWAYS.discard('TGF')
+    #ALL_PATHWAYS.add('TGF_beta_Receptor')
+    ALL_METHODS = {x.split('_')[0] for x in os.listdir(DATA_PATH) if len(x.split('_'))>=3 }
+
     ## parse arguments
     PATHWAYS,ALGORITHMS,args = parse_args(ALL_PATHWAYS,ALL_METHODS)
     INTERACTOME = args.interactome
@@ -167,7 +170,7 @@ def main(argv):
     #populate directories with union predictions
     for ALG in ALGORITHMS:
         #os.remove(os.path.join(ddict[ALG],'*'))
-        join(ALG,PATHWAYS).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
+        join(ALG,PATHWAYS,kargs).to_csv(os.path.join(ddict[ALG],'ranked-edges.csv'),sep='\t',index=False)
         composit_pathway.to_csv(os.path.join(ddict[ALG],'ground.csv'),sep='\t',index=False)
         interactome = os.path.abspath(INTERACTOMES[INTERACTOME]) ## to avoid relative path errors
         if not os.path.isfile(os.path.join(DEST,'interactome.csv')):
@@ -179,6 +182,7 @@ def main(argv):
                 pass
             os.symlink(interactome,os.path.join(ddict[ALG],'interactome.csv'))
         shutil.copy('config.conf',os.path.join(ddict[ALG],'config.conf'))
+        print('Wrote files to {}'.format(ddict[ALG]))
 
 
 
