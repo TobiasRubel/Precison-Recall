@@ -210,7 +210,7 @@ def pr(dname: str,negative:set,truth:set,pname: str, point=False,ignore_adjacent
     ranked = 'KSP index' in predictions.columns or 'rank' in predictions.columns
 
     start = time.time()
-    p2 = pr_nodes(predictions,truth,negative,pname,ranked,point)
+    p2 = pr_nodes(predictions,truth,negative,pname,ranked,point,verbose=True,debug=True)
     end = time.time()
     print('LOG NODES: %s\tpoint=%s\tranked=%s\ttime=%f' % (dname,point,ranked,end-start))
     try:
@@ -270,7 +270,7 @@ def main(argv: str) -> None:
     try:
         path,IGNORE_ADJ,directories = argv[1],eval(argv[2]),argv[3:]
         print(path)
-        print(IGNORE_ADJ)
+        print('ignore adjacents?',IGNORE_ADJ)
         print('generating precision recall data for the following: {}'.format(directories))
     except:
         print('arguments are required...')

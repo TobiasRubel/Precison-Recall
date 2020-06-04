@@ -187,6 +187,11 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     print(spath,sname)
     plt.savefig(os.path.join(spath,sname))
 
+    sname = sname.replace('.png','.pdf')
+    plt.savefig(os.path.join(spath,sname))
+    os.system('pdfcrop %s %s' % (os.path.join(spath,sname),os.path.join(spath,sname)))
+    print('writing to %s'% (os.path.join(spath,sname)))
+
 def fmax(csvdoc: str) -> float:
    df = pd.read_csv(csvdoc)
    vs = [tuple(x) for x in df.values]
@@ -278,7 +283,7 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    color_cycle = cycle(['r','g','b', 'c', 'm', 'y', 'k'])
+    color_cycle = cycle(['r','g','b', 'c', 'm', '#D09F0E', 'k'])
     #plot each precision recall plot
     for l in lat:
         #get algorithm name for legend
@@ -289,14 +294,14 @@ def plot_node_motivation(lat: list, spath: str) -> None:
         recall2,precision2 = pr(l,False,True)
         if len(recall) == 1:
             this_marker = next(markers)
-            ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3)
-            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +' (nearby)',marker=this_marker,ms=10,alpha=0.9)
-            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
+            ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3,zorder=2)
+            ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'$^*$',marker=this_marker,ms=10,alpha=0.9,zorder=2)
+            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3,zorder=2)
         else:
-            ax.plot(recall,precision,color=this_color,label=lname,lw=4,alpha=0.3)
-            ax.plot(recall2,precision2,color=this_color,label=lname +' (nearby)',lw=4,alpha=0.9)
-            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3)
-            ax.plot([recall[-1],recall2[-1]],[precision[-1],precision2[-1]],'--',color=this_color,alpha=0.3)
+            ax.plot(recall,precision,color=this_color,label=lname,lw=4,alpha=0.3,zorder=1)
+            ax.plot(recall2,precision2,color=this_color,label=lname +'$^*$',lw=4,alpha=0.9,zorder=1)
+            ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3,zorder=1)
+            ax.plot([recall[-1],recall2[-1]],[precision[-1],precision2[-1]],'--',color=this_color,alpha=0.3,zorder=1)
 
     #format figure globally
     #ax.legend()
@@ -306,8 +311,8 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     ax.set_xlabel('Node Recall')
     ax.set_ylabel('Node Precision')
     ax.set_title('Reconstructing Wnt Proteins',fontsize=14)
-    ax.set_ylim(0,1.01)
-    ax.set_xlim(0,1.01)
+    ax.set_ylim(0,1.02)
+    ax.set_xlim(0,1.02)
 
     methods = [x.split('/')[-1].split('_') for x in lat]
     infix = [m[0] for m in methods]+methods[0][1:]
@@ -316,7 +321,7 @@ def plot_node_motivation(lat: list, spath: str) -> None:
     #in order to incorporate the save path
     #some more work needs to be done.
     #plt.plot([], [], ' ', label="*No edge-adjacent\nnegatives")
-    plt.legend(loc='lower left',fontsize=8)
+    plt.legend(loc='lower left',ncol=2,fontsize=12)
     plt.tight_layout()
     #plt.subplots_adjust(left=0.21)
     #plt.subplots_adjust(top=0.90)
@@ -351,9 +356,9 @@ def main(args: list) -> None:
     #    print("path {} either doesn't exist or could not be accessed.".format(path))
 
     ## these are HARD-CODED - need to make them arguments.
-    COMPOSITE=True
+    COMPOSITE=False
     NODE_MOTIVATION=False
-    PARAMS=True
+    PARAMS=False
     if verify_coherence(directories,NODE_MOTIVATION,COMPOSITE):
         if COMPOSITE:
             plot_composite(directories,spath)
