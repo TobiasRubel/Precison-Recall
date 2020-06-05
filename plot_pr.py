@@ -19,6 +19,24 @@ from itertools import cycle
 import pandas as pd
 import matplotlib.pyplot as plt
 
+## GLOBAL DICTIONARIES
+MARKERS = {'BTB':'o',
+    'PCSF':'v',
+    'RN':'^',
+    'SP':'<',
+    }
+COLORS = {'BTB':'r','PRAUG-BTB':'r',
+    'PCSF':'g','PRAUG-PCSF':'g',
+    'PL':'b','PRAUG-PL':'b',
+    'RN':'c','PRAUG-RN':'c',
+    'RWR':'m','PRAUG-RWR':'m',
+    'SP':'#D09F0E','PRAUG-SP':'#D09F0E',
+    'PRAUG-GT-NODES':'k',
+    'PRAUG-GT-EDGES':'#8D5D27',
+    }
+
+COMPLETE_LIST = ['BTB', 'PCSF', 'PL', 'RN', 'RWR', 'SP', 'PRAUG-GT-EDGES', 'PRAUG-GT-NODES']
+
 # routines to verify that it makes sense to compare the precision and recall of
 # the different algorithms by ensuring that they were computed on the same
 # interactome, that they were predicting the same pathway, and that they used
@@ -111,21 +129,33 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     :side-effect saves a plot to spath
     """
     #initialize pyplot figure
-    markers = iter(['o','v','^','<','>','1','2','3','4','8','s','p','P','*','h','H','+','x','X','D','d','|','_'][:len(lat)]*50)
+
     if (edges == True or edges == False):
         fig = plt.figure()
         ax = fig.add_subplot(111)
         #plot each precision recall plot
-        for l in lat:
+        for l in sorted(lat,key=lambda t:len(t)):
             print(l)
             #get algorithm name for legend
             #lname = '-'.join([l.split('_')[0],l.split('_')[-1]])
             if params:
                 lname = l.split('/')[-1]
+                lname_orig = l.split('/')[-1].split('_')[0]
             else:
                 lname = l.split('/')[-1].split('_')[0]
+                lname_orig = lname
             #plot
-            ax.plot(*pr(l,edges),label=lname,marker=next(markers),alpha=0.7)
+            recall,precision=pr(l,edges)
+            if 'PRAUG' in lname:
+                alpha_val = 0.9
+                lw=4
+            else:
+                alpha_val = 0.3
+                lw=2
+            if len(recall)==1:
+                ax.plot(recall,precision,label=lname,color=COLORS[lname_orig],marker=MARKERS[lname_orig],ms=10,alpha=alpha_val,zorder=2)
+            else:
+                ax.plot(recall,precision,label=lname,color=COLORS[lname_orig],lw=lw,alpha=alpha_val,zorder=1)
     elif edges == '#':
         fig = plt.figure(figsize=(12,5))
         ax = fig.add_subplot(121)
@@ -147,10 +177,22 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
             cax.plot(*pr(l,False),label="_nolegend_",marker=next(markers),alpha=0.7)
     #format figure globally
     #ax.legend()
+    handles, labels = ax.get_legend_handles_labels()
+    # sort both labels and handles by labels. There has to be a better way to do this but this hosuld work.
+    new_labels = []
+    new_handles = []
+    seen = set()
+    for l in COMPLETE_LIST:
+        for i in range(len(labels)):
+            if l in labels[i] and labels[i] not in seen:
+                new_labels.append(labels[i])
+                new_handles.append(handles[i])
+                seen.add(labels[i])
+
     if params:
-        plt.legend(loc='upper right')
+        ax.legend(new_handles, new_labels,loc='upper right')
     else:
-        plt.legend(loc='center right')
+        ax.legend(new_handles, new_labels,ncol=2,loc='lower right')
     title = lat[0].split('/')[-1].split('_')[2] + ' Pathway'
     #fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
@@ -158,7 +200,7 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     ax.set_title(title + ' Interactions')
     ax.grid(linestyle='--')
     ax.set_xlim(0,1)
-    ax.set_ylim(0.1)
+    ax.set_ylim(0,1.02)
     if edges == '#':
         cax.set_xlabel('Recall')
         cax.set_ylabel('Precision')
@@ -289,11 +331,11 @@ def plot_node_motivation(lat: list, spath: str) -> None:
         #get algorithm name for legend
         lname = l.split('/')[-1].split('_')[0]
         #plot
-        this_color = next(color_cycle)
+        this_color = COLORS[lname]
         recall,precision = pr(l,False,False)
         recall2,precision2 = pr(l,False,True)
         if len(recall) == 1:
-            this_marker = next(markers)
+            this_marker = MARKERS[lname]
             ax.plot(recall,precision,this_marker,color=this_color,label=lname,marker=this_marker,ms=10,alpha=0.3,zorder=2)
             ax.plot(recall2,precision2,this_marker,color=this_color,label=lname +'$^*$',marker=this_marker,ms=10,alpha=0.9,zorder=2)
             ax.plot([recall[0],recall2[0]],[precision[0],precision2[0]],'--',color=this_color,alpha=0.3,zorder=2)
