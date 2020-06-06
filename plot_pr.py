@@ -27,13 +27,43 @@ MARKERS = {'BTB':'o',
     }
 COLORS = {'BTB':'r','PRAUG-BTB':'r',
     'PCSF':'g','PRAUG-PCSF':'g',
-    'PL':'b','PRAUG-PL':'b',
+    'PL':'b','PRAUG-PL':'b','PRAUG-PL-BFS':'r','PRAUG-PL-WEIGHTED':'c','PRAUG-PL-BFS-WEIGHTED':'m',
     'RN':'c','PRAUG-RN':'c',
-    'RWR':'m','PRAUG-RWR':'m',
+    'RWR':'m','PRAUG-RWR':'m','PRAUG-RWR-BFS':'b','PRAUG-RWR-WEIGHTED':'r','PRAUG-RWR-BFS-WEIGHTED':'c',
     'SP':'#D09F0E','PRAUG-SP':'#D09F0E',
     'PRAUG-GT-NODES':'k',
     'PRAUG-GT-EDGES':'#8D5D27',
     }
+
+PARAM_COLORS = {'PRAUG-PL_2018_Wnt_k50':'#D5D8DC',
+'PRAUG-PL_2018_Wnt_k100':'#ABB2B9',
+'PRAUG-PL_2018_Wnt_k500':'#808B96',
+'PRAUG-PL_2018_Wnt_k1000':'#566573',
+'PRAUG-PL_2018_Wnt_k5000':'#1C2833',
+'PL_2018_Wnt_k5000':'b',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.1':'#EAECEE',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.2':'#D5D8DC',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.3':'#ABB2B9',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.4':'#808B96',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.5':'#566573',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.75':'#1C2833',
+'RWR_2018_Wnt_a0.85-t0.75':'m',
+}
+
+PARAM_NAMES = {'PRAUG-PL_2018_Wnt_k50':'PRAUG-PL $k=50$',
+'PRAUG-PL_2018_Wnt_k100':'PRAUG-PL $k=100$',
+'PRAUG-PL_2018_Wnt_k500':'PRAUG-PL $k=500$',
+'PRAUG-PL_2018_Wnt_k1000':'PRAUG-PL $k=1000$',
+'PRAUG-PL_2018_Wnt_k5000':'PRAUG-PL $k=5000$',
+'PL_2018_Wnt_k5000':'PL $k=5000$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.1':'PRAUG-RWR $\\tau=0.1$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.2':'PRAUG-RWR $\\tau=0.2$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.3':'PRAUG-RWR $\\tau=0.3$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.4':'PRAUG-RWR $\\tau=0.4$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.5':'PRAUG-RWR $\\tau=0.5$',
+'PRAUG-RWR_2018_Wnt_a0.85-t0.75':'PRAUG-RWR $\\tau=0.75$',
+'RWR_2018_Wnt_a0.85-t0.75':'RWR $\\tau=0.75$'
+}
 
 COMPLETE_LIST = ['BTB', 'PCSF', 'PL', 'RN', 'RWR', 'SP', 'PRAUG-GT-EDGES', 'PRAUG-GT-NODES']
 
@@ -120,7 +150,7 @@ def pr(name: str,edges=True,ignore_adj=False) -> (list,list):
     return recall,precision
 
 
-def plot(lat: list, spath: str,params=False,edges=True) -> None:
+def plot(lat: list, spath: str,params=False,edges=True,full_axis=True) -> None:
     """
     :lat         list of directory names
     :spath       name of save path
@@ -129,9 +159,11 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
     :side-effect saves a plot to spath
     """
     #initialize pyplot figure
-
+    max_recall = -1
+    min_precision = 2
     if (edges == True or edges == False):
-        fig = plt.figure()
+        #fig = plt.figure()
+        fig = plt.figure(figsize=(4,4)) # used for benchmark figs
         ax = fig.add_subplot(111)
         #plot each precision recall plot
         for l in sorted(lat,key=lambda t:len(t)):
@@ -140,22 +172,25 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
             #lname = '-'.join([l.split('_')[0],l.split('_')[-1]])
             if params:
                 lname = l.split('/')[-1]
-                lname_orig = l.split('/')[-1].split('_')[0]
+                color_dict = PARAM_COLORS
             else:
                 lname = l.split('/')[-1].split('_')[0]
-                lname_orig = lname
+                color_dict = COLORS
             #plot
             recall,precision=pr(l,edges)
-            if 'PRAUG' in lname:
+            max_recall = max(max_recall,max(recall))
+            min_precision = min(min_precision,min(precision))
+            if 'PRAUG' in lname or params:
                 alpha_val = 0.9
                 lw=4
             else:
                 alpha_val = 0.3
                 lw=2
             if len(recall)==1:
-                ax.plot(recall,precision,label=lname,color=COLORS[lname_orig],marker=MARKERS[lname_orig],ms=10,alpha=alpha_val,zorder=2)
+
+                ax.plot(recall,precision,label=lname,color=color_dict[lname],marker=MARKERS[lname_orig],ms=10,alpha=alpha_val,zorder=2)
             else:
-                ax.plot(recall,precision,label=lname,color=COLORS[lname_orig],lw=lw,alpha=alpha_val,zorder=1)
+                ax.plot(recall,precision,label=PARAM_NAMES.get(lname,lname),color=color_dict[lname],lw=lw,alpha=alpha_val,zorder=1)
     elif edges == '#':
         fig = plt.figure(figsize=(12,5))
         ax = fig.add_subplot(121)
@@ -190,17 +225,22 @@ def plot(lat: list, spath: str,params=False,edges=True) -> None:
                 seen.add(labels[i])
 
     if params:
-        ax.legend(new_handles, new_labels,loc='upper right')
+        ax.legend(new_handles, new_labels)
     else:
-        ax.legend(new_handles, new_labels,ncol=2,loc='lower right')
+        ax.legend(new_handles, new_labels)#,ncol=2,loc='lower right')
     title = lat[0].split('/')[-1].split('_')[2] + ' Pathway'
     #fig.suptitle(title,fontsize=16)
     ax.set_xlabel('Recall')
     ax.set_ylabel('Precision')
     ax.set_title(title + ' Interactions')
     ax.grid(linestyle='--')
-    ax.set_xlim(0,1)
-    ax.set_ylim(0,1.02)
+    if full_axis or max_recall == -1:
+        ax.set_xlim(0,1)
+        ax.set_ylim(0,1.02)
+    else:
+        print(min_precision,max_recall)
+        ax.set_xlim(0,min(max_recall+0.15,1.0))
+        ax.set_ylim(max(min_precision-0.1,0),1.02)
     if edges == '#':
         cax.set_xlabel('Recall')
         cax.set_ylabel('Precision')
@@ -401,13 +441,14 @@ def main(args: list) -> None:
     COMPOSITE=False
     NODE_MOTIVATION=False
     PARAMS=False
+    FULL_AXIS = True
     if verify_coherence(directories,NODE_MOTIVATION,COMPOSITE):
         if COMPOSITE:
             plot_composite(directories,spath)
         elif NODE_MOTIVATION:
             plot_node_motivation(directories,spath)
         else: # plot regular PR
-            plot(directories,spath,PARAMS,True)
+            plot(directories,spath,PARAMS,True,FULL_AXIS)
         return
 
 
